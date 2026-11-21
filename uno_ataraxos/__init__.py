@@ -81,6 +81,12 @@ from uno_ataraxos.eval_suite import (
     ExpertHeuristicBot,
     evaluate_duplicate,
 )
+from uno_ataraxos.belief import (
+    compute_eligible,
+    belief_step_legal_mask,
+    hypergeometric_hand_nll,
+    UnoBeliefNet,
+)
 
 __all__ = [
     "UnoEngine",
@@ -134,4 +140,9 @@ __all__ = [
     "GreedyBot",
     "ExpertHeuristicBot",
     "evaluate_duplicate",
+    # Belief
+    "compute_eligible",
+    "belief_step_legal_mask",
+    "hypergeometric_hand_nll",
+    "UnoBeliefNet",
 ]
