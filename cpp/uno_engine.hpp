@@ -674,6 +674,32 @@ public:
         }
     }
 
+    // World Setter for Test-Time Search & Endgame Solvers
+    void set_world(int8_t opp_player, const std::vector<uint8_t>& opp_hand, const std::vector<uint8_t>& draw_pile) {
+        hands[opp_player] = opp_hand;
+        deck = draw_pile;
+        is_over = (hands[0].empty() || hands[1].empty() || turn_count >= MAX_TURNS || consecutive_passes >= 2);
+        if (is_over) {
+            if (hands[0].empty()) winner = 0;
+            else if (hands[1].empty()) winner = 1;
+            else _end_by_card_count();
+        } else {
+            winner = -1;
+        }
+    }
+
+    std::vector<int> get_hand_ids(int8_t player) const {
+        return std::vector<int>(hands[player].begin(), hands[player].end());
+    }
+
+    std::vector<int> get_deck_ids() const {
+        return std::vector<int>(deck.begin(), deck.end());
+    }
+
+    std::vector<int> get_discard_pile_ids() const {
+        return std::vector<int>(discard_pile.begin(), discard_pile.end());
+    }
+
     // String-based state loader for Python integration
     void load_state_from_strings(
         const std::vector<std::string>& h0,

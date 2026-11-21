@@ -16,7 +16,7 @@ python setup.py build_ext --inplace
 # 2. Run test suite to verify 100% environment health & parity
 pytest tests/ -v
 
-# 3. Launch the 100M-Step Blueprint Training Run
+# 3. Launch the 100M-Step Blueprint Training Run (Stage A)
 python -m uno_ataraxos.train_blueprint \
   --total-steps 100000000 \
   --num-envs 512 \
@@ -35,6 +35,50 @@ python -m uno_ataraxos.train_blueprint \
 Or simply execute the one-click script:
 ```bash
 python notebooks/run_cloud_blueprint.py
+```
+
+---
+
+## 2. End-to-End Cloud Pipeline (Stages A -> B -> C -> D)
+
+Once Stage A (100M Blueprint) completes or reaches a strong checkpoint (`best.pt`), proceed with the downstream stages:
+
+### Stage B: 20M-Position Hard-Masked Generative Belief Network
+Trains the autoregressive generative belief network on streaming rollouts (50% self-play + 25% greedy + 25% random + expert heuristic OOD games) to learn accurate opponent hand posteriors:
+```bash
+python -m uno_ataraxos.train_belief \
+  --total-positions 20000000 \
+  --batch-size 256 \
+  --lr 3e-4 \
+  --eval-every-steps 5000 \
+  --eval-positions 50000 \
+  --blueprint-ckpt /kaggle/working/runs/blueprint_100m/best.pt \
+  --save-dir /kaggle/working/runs/belief_20m
+```
+*Expected training time on Kaggle T4: ~2 hours.*
+
+### Stage C: 15M-Step VRPO Neural Exploiter Red-Team
+Measures the empirical Nash exploitability of the frozen Blueprint by training a dedicated adversarial agent (pure PPO + entropy floor) strictly on the frozen target across 500+ vectorized parallel environments:
+```bash
+python -m uno_ataraxos.train_exploiter \
+  --target-ckpt /kaggle/working/runs/blueprint_100m/best.pt \
+  --total-steps 15000000 \
+  --num-envs 512 \
+  --rollout-len 64 \
+  --eval-every-steps 1000000 \
+  --eval-decks 250 \
+  --run-dir /kaggle/working/runs/exploiter_15m
+```
+*Expected training time on Kaggle T4: ~1.5 hours.*
+
+### Stage D: Search Hyperparameter Sweep & Defense Verification
+Runs mirrored duplicate tournaments against the frozen Blueprint to find the Pareto-optimal MMD parameters ($\eta, \tau, \text{leaf\_eval}$), saves `search_config.json`, and verifies search defends against the exploiter:
+```bash
+python scripts/tune_search.py \
+  --blueprint /kaggle/working/runs/blueprint_100m/best.pt \
+  --belief /kaggle/working/runs/belief_20m/best.pt \
+  --num-decks 100 \
+  --out-config /kaggle/working/runs/search_config.json
 ```
 
 ---

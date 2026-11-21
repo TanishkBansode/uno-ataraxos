@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <cstddef>
+#include <random>
 
 namespace py = pybind11;
 using namespace uno;
@@ -117,6 +118,7 @@ public:
     std::vector<uint8_t> legal_mask_buf;     // [B, 61]
     std::vector<float> opp_hand_counts_buf;  // [B, 54]
     std::vector<int32_t> current_player_buf; // [B]
+    std::vector<int32_t> acting_player_buf;  // [B]
     std::vector<float> rewards_buf;          // [B]
     std::vector<uint8_t> dones_buf;          // [B]
 
@@ -139,6 +141,7 @@ public:
         legal_mask_buf.resize(num_envs * 61);
         opp_hand_counts_buf.resize(num_envs * 54);
         current_player_buf.resize(num_envs);
+        acting_player_buf.resize(num_envs);
         rewards_buf.resize(num_envs);
         dones_buf.resize(num_envs);
 
@@ -148,6 +151,21 @@ public:
         }
 
         reset();
+    }
+
+    void resize(int new_num_envs) {
+        if (new_num_envs == num_envs) return;
+        num_envs = new_num_envs;
+        card_features_buf.resize(num_envs * 54 * 7);
+        global_features_buf.resize(num_envs * 10);
+        history_tokens_buf.resize(num_envs * 48 * 5);
+        legal_mask_buf.resize(num_envs * 61);
+        opp_hand_counts_buf.resize(num_envs * 54);
+        current_player_buf.resize(num_envs);
+        acting_player_buf.resize(num_envs);
+        rewards_buf.resize(num_envs);
+        dones_buf.resize(num_envs);
+        engines.resize(num_envs);
     }
 
     void _update_env_buffers(int env_idx) {
@@ -216,6 +234,7 @@ public:
                 tasks.emplace_back([this, start, end, act_ptr, do_autoreset]() {
                     for (int i = start; i < end; ++i) {
                         auto& eng = engines[i];
+                        acting_player_buf[i] = eng.current_player;
                         uint8_t a = static_cast<uint8_t>(act_ptr[i]);
                         // Execute action
                         float r = eng.step(a);
@@ -345,7 +364,169 @@ public:
             py::cast(this)
         );
 
+        d["acting_player"] = py::array_t<int32_t>(
+            {num_envs},
+            {(ssize_t)sizeof(int32_t)},
+            acting_player_buf.data(),
+            py::cast(this)
+        );
+
         return d;
+    }
+
+    py::tuple load_worlds_and_step_root(
+        const UnoEngine& root_engine,
+        const py::array_t<int32_t, py::array::c_style | py::array::forcecast>& sampled_opp_hands,
+        const py::array_t<int32_t, py::array::c_style | py::array::forcecast>& legal_actions,
+        uint64_t seed = 42
+    ) {
+        py::buffer_info opp_buf = sampled_opp_hands.request();
+        py::buffer_info act_buf = legal_actions.request();
+
+        if (opp_buf.ndim != 2 || opp_buf.shape[1] != 54) {
+            throw std::runtime_error("sampled_opp_hands must have shape [K, 54]");
+        }
+        int K = static_cast<int>(opp_buf.shape[0]);
+        int num_a = static_cast<int>(act_buf.size);
+        if (K <= 0 || num_a <= 0) {
+            throw std::runtime_error("K and num_a must be positive");
+        }
+
+        int total_slots = num_a * K;
+        if (total_slots != num_envs) {
+            resize(total_slots);
+        }
+
+        const int32_t* opp_ptr = static_cast<const int32_t*>(opp_buf.ptr);
+        const int32_t* act_ptr = static_cast<const int32_t*>(act_buf.ptr);
+
+        int8_t root_p = root_engine.current_player;
+        int8_t opp_p = 1 - root_p;
+
+        uint8_t my_counts[54] = {0};
+        for (uint8_t c : root_engine.hands[root_p]) {
+            if (c < 54) my_counts[c]++;
+        }
+        const auto& full_counts = get_full_108_deck_counts();
+
+        // Step 1: Pre-generate the K sampled worlds (opp_hand_k and draw_pile_k)
+        struct WorldData {
+            std::vector<uint8_t> opp_hand;
+            std::vector<uint8_t> draw_pile;
+        };
+        std::vector<WorldData> worlds(K);
+
+        for (int k = 0; k < K; ++k) {
+            auto& w = worlds[k];
+            w.opp_hand.reserve(16);
+            w.draw_pile.reserve(80);
+
+            for (int c = 0; c < 54; ++c) {
+                int opp_cnt = opp_ptr[k * 54 + c];
+                for (int i = 0; i < opp_cnt; ++i) {
+                    w.opp_hand.push_back(static_cast<uint8_t>(c));
+                }
+
+                int rem = (int)full_counts[c] - (int)my_counts[c] - (int)root_engine.public_discard[c] - opp_cnt;
+                rem = std::max(0, rem);
+                for (int i = 0; i < rem; ++i) {
+                    w.draw_pile.push_back(static_cast<uint8_t>(c));
+                }
+            }
+
+            // Fisher-Yates shuffle draw pile with world k's seed
+            std::mt19937_64 rng_k(seed + static_cast<uint64_t>(k) * 10007 + 1);
+            std::shuffle(w.draw_pile.begin(), w.draw_pile.end(), rng_k);
+        }
+
+        // Step 2: Multi-threaded CRN setup & step root action
+        {
+            py::gil_scoped_release release;
+            size_t n_workers = pool->size();
+            std::vector<std::function<void()>> tasks;
+            tasks.reserve(n_workers);
+
+            for (size_t t = 0; t < n_workers; ++t) {
+                int start = static_cast<int>(t * total_slots / n_workers);
+                int end = static_cast<int>((t + 1) * total_slots / n_workers);
+
+                tasks.emplace_back([this, start, end, &root_engine, &worlds, act_ptr, K, root_p, opp_p]() {
+                    for (int slot = start; slot < end; ++slot) {
+                        int a_idx = slot / K;
+                        int k = slot % K;
+
+                        auto& eng = engines[slot];
+                        eng = root_engine;
+                        eng.hands[opp_p] = worlds[k].opp_hand;
+                        eng.deck = worlds[k].draw_pile;
+
+                        acting_player_buf[slot] = root_p;
+                        uint8_t a = static_cast<uint8_t>(act_ptr[a_idx]);
+                        float r = eng.step(a);
+                        rewards_buf[slot] = r;
+                        dones_buf[slot] = eng.is_over ? 1 : 0;
+                        _update_env_buffers(slot);
+                    }
+                });
+            }
+            pool->enqueue_batch(tasks);
+            pool->wait_all();
+            total_steps_.fetch_add(total_slots, std::memory_order_relaxed);
+        }
+
+        py::dict obs = get_obs_dict();
+        py::array_t<float> py_rewards(num_envs, rewards_buf.data());
+        py::array_t<bool> py_dones(num_envs, reinterpret_cast<const bool*>(dones_buf.data()));
+
+        return py::make_tuple(obs, py_rewards, py_dones);
+    }
+
+    py::tuple step_indices(
+        const py::array_t<int32_t, py::array::c_style | py::array::forcecast>& env_indices,
+        const py::array_t<int32_t, py::array::c_style | py::array::forcecast>& actions
+    ) {
+        py::buffer_info idx_buf = env_indices.request();
+        py::buffer_info act_buf = actions.request();
+        int n_active = static_cast<int>(idx_buf.size);
+        if (n_active != static_cast<int>(act_buf.size)) {
+            throw std::runtime_error("env_indices size must match actions size");
+        }
+        const int32_t* idx_ptr = static_cast<const int32_t*>(idx_buf.ptr);
+        const int32_t* act_ptr = static_cast<const int32_t*>(act_buf.ptr);
+
+        {
+            py::gil_scoped_release release;
+            size_t n_workers = pool->size();
+            std::vector<std::function<void()>> tasks;
+            tasks.reserve(n_workers);
+
+            for (size_t t = 0; t < n_workers; ++t) {
+                int start = static_cast<int>(t * n_active / n_workers);
+                int end = static_cast<int>((t + 1) * n_active / n_workers);
+
+                tasks.emplace_back([this, start, end, idx_ptr, act_ptr]() {
+                    for (int k = start; k < end; ++k) {
+                        int i = idx_ptr[k];
+                        auto& eng = engines[i];
+                        acting_player_buf[i] = eng.current_player;
+                        uint8_t a = static_cast<uint8_t>(act_ptr[k]);
+                        float r = eng.step(a);
+                        rewards_buf[i] = r;
+                        dones_buf[i] = eng.is_over ? 1 : 0;
+                        _update_env_buffers(i);
+                    }
+                });
+            }
+            pool->enqueue_batch(tasks);
+            pool->wait_all();
+            total_steps_.fetch_add(n_active, std::memory_order_relaxed);
+        }
+
+        py::dict obs = get_obs_dict();
+        py::array_t<float> py_rewards(num_envs, rewards_buf.data());
+        py::array_t<bool> py_dones(num_envs, reinterpret_cast<const bool*>(dones_buf.data()));
+
+        return py::make_tuple(obs, py_rewards, py_dones);
     }
 
     uint64_t get_total_steps() const { return total_steps_.load(); }
@@ -464,6 +645,39 @@ PYBIND11_MODULE(_cpp, m) {
              py::arg("hands_0"), py::arg("hands_1"), py::arg("deck"), py::arg("discard_pile"),
              py::arg("top_card"), py::arg("active_color"), py::arg("stack"),
              py::arg("current_player"), py::arg("turn_count"), py::arg("consecutive_passes"))
+        .def("load_state_ids", [](UnoEngine& self,
+                                  const std::vector<int>& h0,
+                                  const std::vector<int>& h1,
+                                  const std::vector<int>& deck,
+                                  const std::vector<int>& discard,
+                                  int top_card_act,
+                                  int act_color,
+                                  int stack,
+                                  int current_player,
+                                  int turn_count,
+                                  int consecutive_passes) {
+            std::vector<uint8_t> h0_u(h0.begin(), h0.end());
+            std::vector<uint8_t> h1_u(h1.begin(), h1.end());
+            std::vector<uint8_t> d_u(deck.begin(), deck.end());
+            std::vector<uint8_t> disc_u(discard.begin(), discard.end());
+            self.load_state(h0_u, h1_u, d_u, disc_u,
+                            static_cast<uint8_t>(top_card_act),
+                            static_cast<int8_t>(act_color),
+                            stack,
+                            static_cast<int8_t>(current_player),
+                            turn_count,
+                            consecutive_passes);
+        }, py::arg("hands_0"), py::arg("hands_1"), py::arg("deck"), py::arg("discard_pile"),
+           py::arg("top_card"), py::arg("active_color"), py::arg("stack"),
+           py::arg("current_player"), py::arg("turn_count"), py::arg("consecutive_passes"))
+        .def("set_world", [](UnoEngine& self, int opp_player, const std::vector<int>& opp_hand, const std::vector<int>& draw_pile) {
+            std::vector<uint8_t> h(opp_hand.begin(), opp_hand.end());
+            std::vector<uint8_t> d(draw_pile.begin(), draw_pile.end());
+            self.set_world(static_cast<int8_t>(opp_player), h, d);
+        }, py::arg("opp_player"), py::arg("opp_hand"), py::arg("draw_pile"))
+        .def("get_hand_ids", &UnoEngine::get_hand_ids, py::arg("player"))
+        .def("get_deck_ids", &UnoEngine::get_deck_ids)
+        .def("get_discard_pile_ids", &UnoEngine::get_discard_pile_ids)
         .def_readwrite("target", &UnoEngine::target)
         .def_readwrite("active_color", &UnoEngine::active_color)
         .def_readwrite("stack", &UnoEngine::stack)
@@ -488,6 +702,15 @@ PYBIND11_MODULE(_cpp, m) {
         .def("step_no_autoreset", &VecUnoEnv::step_no_autoreset, py::arg("actions"))
         .def("step_random_legal", &VecUnoEnv::step_random_legal)
         .def("get_obs", &VecUnoEnv::get_obs_dict)
+        .def("get_engine", [](VecUnoEnv& self, int i) -> UnoEngine& {
+            if (i < 0 || i >= self.num_envs) throw std::out_of_range("env index out of range");
+            return self.engines[i];
+        }, py::return_value_policy::reference_internal, py::arg("index"))
+        .def("load_worlds_and_step_root", &VecUnoEnv::load_worlds_and_step_root,
+             py::arg("root_engine"), py::arg("sampled_opp_hands"), py::arg("legal_actions"), py::arg("seed") = 42)
+        .def("step_indices", &VecUnoEnv::step_indices,
+             py::arg("env_indices"), py::arg("actions"))
+        .def("resize", &VecUnoEnv::resize, py::arg("new_num_envs"))
         .def_property_readonly("total_steps", &VecUnoEnv::get_total_steps)
         .def_property_readonly("total_episodes", &VecUnoEnv::get_total_episodes)
         .def_readonly("num_envs", &VecUnoEnv::num_envs);
