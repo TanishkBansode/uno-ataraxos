@@ -68,6 +68,11 @@ def main():
         compile_flag = False
     print("-" * 72)
 
+    # Ensure repo root is on sys.path
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
     # 1. Verify C++ extension is built
     try:
         import uno_ataraxos as ua
@@ -75,10 +80,13 @@ def main():
         vec = VecUnoEnv(num_envs=4, seed=42)
         obs = vec.reset()
         print("✓ C++ VecUnoEnv extension verified & functional!")
-    except ImportError as e:
+    except (ImportError, ModuleNotFoundError) as e:
         print("Building C++ extension in-place...")
-        subprocess.check_call([sys.executable, "setup.py", "build_ext", "--inplace"])
+        subprocess.check_call([sys.executable, "setup.py", "build_ext", "--inplace"], cwd=repo_root)
         import uno_ataraxos as ua
+        from uno_ataraxos import VecUnoEnv
+        vec = VecUnoEnv(num_envs=4, seed=42)
+        obs = vec.reset()
         print("✓ C++ extension built successfully!")
 
     # 2. Check for existing checkpoint to resume across session timeouts

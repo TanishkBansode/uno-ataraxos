@@ -15,13 +15,19 @@ from collections import Counter
 import pytest
 import numpy as np
 
-from uno_gym.sim import UnoSim
-from uno_gym.state import normalize_card_key
+try:
+    from uno_gym.sim import UnoSim
+    from uno_gym.state import normalize_card_key
+    HAS_UNO_GYM = True
+except ImportError:
+    HAS_UNO_GYM = False
+
 import uno_ataraxos as ua
 
 COLOR_MAP = {"r": 0, "g": 1, "b": 2, "y": 3}
 
 
+@pytest.mark.skipif(not HAS_UNO_GYM, reason="uno-gym not installed in this environment")
 def test_10000_games_differential_vs_uno_gym():
     NUM_GAMES = 10000
     reshuffles_verified = 0

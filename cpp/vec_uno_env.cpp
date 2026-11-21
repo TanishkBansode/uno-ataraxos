@@ -6,6 +6,7 @@
 #include <pybind11/numpy.h>
 
 #include <vector>
+#include <queue>
 #include <thread>
 #include <future>
 #include <atomic>
@@ -13,6 +14,11 @@
 #include <mutex>
 #include <functional>
 #include <memory>
+#include <algorithm>
+#include <string>
+#include <cstdint>
+#include <stdexcept>
+#include <cstddef>
 
 namespace py = pybind11;
 using namespace uno;
@@ -22,7 +28,7 @@ using namespace uno;
 // ============================================================================
 class SimpleThreadPool {
 public:
-    explicit SimpleThreadPool(size_t threads) : stop_(false), active_tasks_(0) {
+    explicit SimpleThreadPool(size_t threads) : active_tasks_(0), stop_(false) {
         if (threads == 0) {
             threads = std::max(1u, std::thread::hardware_concurrency());
         }
@@ -210,8 +216,6 @@ public:
                 tasks.emplace_back([this, start, end, act_ptr, do_autoreset]() {
                     for (int i = start; i < end; ++i) {
                         auto& eng = engines[i];
-                        int8_t acting_p = eng.current_player;
-
                         uint8_t a = static_cast<uint8_t>(act_ptr[i]);
                         // Execute action
                         float r = eng.step(a);

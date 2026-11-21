@@ -9,13 +9,12 @@
 Copy and paste these commands into a Kaggle Notebook or Google Colab (with GPU accelerator enabled):
 
 ```bash
-# 1. Install pybind11 & compile the C++17 VecUnoEnv simulator (takes ~15 seconds)
-pip install pybind11
+# 1. Install dependencies & build C++ extension in-place (takes ~15 seconds)
+pip install -r requirements.txt
 python setup.py build_ext --inplace
 
-# 2. Run a 5-second environment and GPU health check
-python scripts/bench_env.py
-python -c "import torch; print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'No GPU')"
+# 2. Run test suite to verify 100% environment health & parity
+pytest tests/ -v
 
 # 3. Launch the 100M-Step Blueprint Training Run
 python -m uno_ataraxos.train_blueprint \
@@ -31,7 +30,7 @@ python -m uno_ataraxos.train_blueprint \
   --run-dir /kaggle/working/runs/blueprint_100m
 ```
 
-*(On Google Colab, change `--run-dir` to `/content/runs/blueprint_100m` or to `/content/drive/MyDrive/runs/blueprint_100m` if Google Drive is mounted).*
+*(If installing as an editable package with pip, use `pip install -e . --no-build-isolation` or `pip install .`)*.
 
 Or simply execute the one-click script:
 ```bash

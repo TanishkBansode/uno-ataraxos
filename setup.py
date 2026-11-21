@@ -5,7 +5,7 @@ import platform
 sys_name = platform.system()
 mach_name = platform.machine().lower()
 
-extra_compile_args = ["-O3", "-std=c++17"]
+extra_compile_args = ["-O3"]
 extra_link_args = []
 
 if sys_name == "Darwin" and mach_name in ("arm64", "aarch64"):
@@ -25,6 +25,7 @@ ext_modules = [
     Pybind11Extension(
         "uno_ataraxos._cpp",
         ["cpp/vec_uno_env.cpp"],
+        include_dirs=["cpp"],
         cxx_std=17,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
@@ -37,4 +38,5 @@ setup(
     packages=["uno_ataraxos"],
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
+    zip_safe=False,
 )

@@ -10,6 +10,8 @@
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
+#include <cstdint>
+#include <utility>
 
 namespace uno {
 
