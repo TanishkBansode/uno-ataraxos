@@ -1,0 +1,50 @@
+# Checkpoints & Experiment Runs
+runs/
+*.pt
+*.pth
+*.ckpt
+
+# C++ Build & Compiled Extensions
+build/
+*.so
+*.dylib
+*.o
+*.a
+
+# Python Packaging & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+.installed.cfg
+MANIFEST
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# External / Nested Repositories
+uno-gym/
+
+# OS Artifacts
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
