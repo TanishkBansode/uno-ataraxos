@@ -52,13 +52,17 @@ def main():
     parser.add_argument("--seed", type=int, default=None, help="Initial random seed")
     parser.add_argument("--K", type=int, default=128, help="Number of belief worlds")
     parser.add_argument("--depth", type=int, default=12, help="Rollout depth")
+    parser.add_argument("--portfolio", action="store_true", default=True, help="Enable 3-style portfolio rollout search")
+    parser.add_argument("--no-portfolio", dest="portfolio", action="store_false", help="Disable portfolio rollout search")
+    parser.add_argument("--adaptive", action="store_true", default=True, help="Enable online Bayesian opponent tracking")
+    parser.add_argument("--no-adaptive", dest="adaptive", action="store_false", help="Disable online Bayesian tracking")
     args = parser.parse_args()
 
     device = get_device()
     print(f"\n{COLORS['bold']}{'='*60}")
     print("      ATARAXOS 1v1 UNO - TEST-TIME SEARCH & BELIEF X-RAY")
     print(f"{'='*60}{COLORS['reset']}")
-    print(f"Device: {device} | Mode: {args.mode.upper()}")
+    print(f"Device: {device} | Mode: {args.mode.upper()} | Portfolio: {args.portfolio} | Adaptive Bayes: {args.adaptive}")
     print(f"Loading AI agent...")
 
     agent = AtaraxosUnoAgent(
@@ -69,6 +73,8 @@ def main():
         device=device,
         K=args.K,
         depth=args.depth,
+        use_portfolio=args.portfolio,
+        use_adaptive_bayes=args.adaptive,
     )
     print(f"AI loaded successfully! You are Player {args.human_player}.\n")
 
@@ -92,7 +98,7 @@ def main():
 
         print(f"\n{COLORS['dim']}--- Turn {turn} | Target: {color_card(target)} | Active Color: {col_names[act_col]} | Stack: {stack} ---{COLORS['reset']}")
 
-        h_human = engine.get_hands_str(human_p)
+        h_human = engine.hands[human_p]
         h_ai_len = len(engine.get_hand_ids(ai_p))
         print(f"AI Hand Size: {COLORS['bold']}{h_ai_len}{COLORS['reset']} cards | Deck: {len(engine.get_deck_ids())} cards")
 
@@ -116,7 +122,10 @@ def main():
                         chosen_act = legal_ids[choice_idx]
                         break
                     print("Invalid index. Try again.")
-                except (ValueError, EOFError):
+                except EOFError:
+                    print("\nGame exited by user.")
+                    return
+                except ValueError:
                     print("Please enter a valid integer index.")
 
             print(f">> You played: {color_card(legal_strs[choice_idx])}")
@@ -133,6 +142,12 @@ def main():
 
             if s_res is not None and args.xray:
                 print(f"\n{COLORS['magenta']}=== [BELIEF X-RAY DIAGNOSTICS] ==={COLORS['reset']}")
+                if hasattr(agent, "opp_tracker"):
+                    w = agent.opp_tracker.weights
+                    s = agent.opp_tracker.ema_surprisal
+                    _, u_mix = agent.opp_tracker.get_belief_params()
+                    print(f"  Opponent Profile: [BP: {w[0]*100:4.1f}% | Aggressive: {w[1]*100:4.1f}% | Unpredictable: {w[2]*100:4.1f}%] | Surprisal: {s:4.2f} | Belief Mix: {u_mix*100:4.1f}%")
+
                 xr = s_res.belief_xray
                 print(f"  Belief over YOUR hand ({int(xr['opp_hand_size'])} cards):")
                 print(f"    P(You hold +2):     {xr['p_plus_2']*100:5.1f}%")

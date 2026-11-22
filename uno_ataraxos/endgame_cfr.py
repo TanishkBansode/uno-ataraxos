@@ -82,6 +82,8 @@ def solve_endgame_pdcfr(
     known_opp_hands: Optional[List[List[int]]] = None,
     deterministic: bool = False,
     seed: Optional[int] = None,
+    belief_temp: float = 1.0,
+    uniform_mix: float = 0.03,
 ) -> SearchResult:
     """Solve the low-card endgame using ultra-fast 3-ply PDCFR+.
 
@@ -156,7 +158,7 @@ def solve_endgame_pdcfr(
         belief_xray = {"p_plus_2": 0.0, "p_plus_4": 0.0, "p_red": 0.0, "p_green": 0.0, "p_blue": 0.0, "p_yellow": 0.0, "opp_hand_size": float(opp_hand_size)}
     else:
         opp_hand_size = len(root_engine.get_hand_ids(opp_player))
-        sampled_opp = belief_net.sample_opp_hands(cf_t, gf_t, ht_t, K=K, temp=1.0, uniform_mix=0.03)
+        sampled_opp = belief_net.sample_opp_hands(cf_t, gf_t, ht_t, K=K, temp=belief_temp, uniform_mix=uniform_mix)
         belief_xray = compute_belief_xray(sampled_opp, opp_hand_size)
 
         # Deduplicate

@@ -676,6 +676,7 @@ PYBIND11_MODULE(_cpp, m) {
             self.set_world(static_cast<int8_t>(opp_player), h, d);
         }, py::arg("opp_player"), py::arg("opp_hand"), py::arg("draw_pile"))
         .def("get_hand_ids", &UnoEngine::get_hand_ids, py::arg("player"))
+        .def("get_hands_str", &UnoEngine::get_hands_str, py::arg("player"))
         .def("get_deck_ids", &UnoEngine::get_deck_ids)
         .def("get_discard_pile_ids", &UnoEngine::get_discard_pile_ids)
         .def_readwrite("target", &UnoEngine::target)
@@ -691,7 +692,10 @@ PYBIND11_MODULE(_cpp, m) {
         })
         .def_property_readonly("deck", &UnoEngine::get_deck_str)
         .def_property_readonly("discard_pile", &UnoEngine::get_discard_pile_str)
-        .def_property_readonly("played_cards", &UnoEngine::get_played_cards_str);
+        .def_property_readonly("played_cards", &UnoEngine::get_played_cards_str)
+        .def("set_history_events", &UnoEngine::set_history_events, py::arg("events"))
+        .def("set_reshuffle_provenance", &UnoEngine::set_reshuffle_provenance,
+             py::arg("pool"), py::arg("d0"), py::arg("d1"), py::arg("k0"), py::arg("k1"));
 
     // VecUnoEnv
     py::class_<VecUnoEnv>(m, "VecUnoEnv")

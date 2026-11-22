@@ -802,6 +802,47 @@ public:
         if (player < 0) player = current_player;
         return draws_since_reshuffle[player];
     }
+
+    void set_history_events(const std::vector<std::vector<int32_t>>& events) {
+        history_events.clear();
+        for (const auto& ev_data : events) {
+            if (ev_data.size() < 5) continue;
+            HistoryEvent ev;
+            ev.actor_id = static_cast<int8_t>(ev_data[0]);
+            ev.action_id = static_cast<uint8_t>(ev_data[1]);
+            ev.active_color_before = static_cast<int8_t>(ev_data[2]);
+            ev.stack_before = static_cast<uint8_t>(ev_data[3]);
+            ev.cards_drawn = static_cast<uint8_t>(ev_data[4]);
+            if (history_events.size() < 48) {
+                history_events.push_back(ev);
+            } else {
+                for (size_t i = 0; i < 47; ++i) {
+                    history_events[i] = history_events[i + 1];
+                }
+                history_events[47] = ev;
+            }
+        }
+    }
+
+    void set_reshuffle_provenance(
+        const std::vector<int32_t>& pool,
+        int32_t d0,
+        int32_t d1,
+        const std::vector<int32_t>& k0,
+        const std::vector<int32_t>& k1
+    ) {
+        for (int i = 0; i < NUM_CARD_TYPES && i < (int)pool.size(); ++i) {
+            last_reshuffle_pool[i] = static_cast<uint8_t>(pool[i]);
+        }
+        draws_since_reshuffle[0] = d0;
+        draws_since_reshuffle[1] = d1;
+        for (int i = 0; i < NUM_CARD_TYPES && i < (int)k0.size(); ++i) {
+            known_drawn_from_recycled[0][i] = static_cast<uint8_t>(k0[i]);
+        }
+        for (int i = 0; i < NUM_CARD_TYPES && i < (int)k1.size(); ++i) {
+            known_drawn_from_recycled[1][i] = static_cast<uint8_t>(k1[i]);
+        }
+    }
 };
 
 } // namespace uno
