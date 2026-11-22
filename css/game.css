@@ -201,10 +201,20 @@
   object-fit: contain;
   cursor: pointer;
   z-index: 10;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
 
-#carddeck:hover {
-  animation: GrowShrink 1.2s linear infinite;
+@media (hover: hover) and (pointer: fine) {
+  #carddeck:hover {
+    transform: translate(-50%, -50%) scale(1.06);
+    filter: brightness(1.1);
+  }
+}
+
+#carddeck:active {
+  transform: translate(-50%, -50%) scale(0.95);
 }
 
 #table {
