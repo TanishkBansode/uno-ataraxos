@@ -15,6 +15,10 @@ import {
 
 const engine = new UnoGameEngine();
 const modelClient = new AtaraxosModelClient();
+if (typeof window !== "undefined") {
+  window.engine = engine;
+  window.modelClient = modelClient;
+}
 
 const humanPlayerId = "human";
 const botPlayerId = "bot";

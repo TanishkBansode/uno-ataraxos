@@ -71,6 +71,8 @@ export class InBrowserAtaraxosEngine {
       ort.env.wasm.numThreads = this.threads;
       ort.env.wasm.simd = true;
       ort.env.wasm.proxy = false;
+      ort.env.wasm.wasmPaths =
+        "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
     }
     if (ort.env) {
       ort.env.logLevel = "error";
@@ -167,27 +169,36 @@ export class InBrowserAtaraxosEngine {
       const sessionOptions = {
         executionProviders,
         graphOptimizationLevel: "all",
+        logSeverityLevel: 3,
       };
 
-      try {
-        this.session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
-        this.device = hasWebGpu ? "webgpu" : "wasm";
-      } catch (gpuErr) {
-        if (hasWebGpu) {
+      if (hasWebGpu) {
+        try {
+          this.session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
+          if (progressCallback) progressCallback(85, "Prewarming Neural Pipelines...");
+          await this._prewarmActor();
+          this.device = "webgpu";
+        } catch (gpuErr) {
           console.warn("[Ataraxos] WebGPU failed, falling back to multi-threaded WASM:", gpuErr);
           this.session = await ort.InferenceSession.create(modelBuffer, {
             executionProviders: ["wasm"],
             graphOptimizationLevel: "all",
+            logSeverityLevel: 3,
           });
+          if (progressCallback) progressCallback(85, "Prewarming WASM Pipelines...");
+          await this._prewarmActor();
           this.device = "wasm";
-        } else {
-          throw gpuErr;
         }
+      } else {
+        this.session = await ort.InferenceSession.create(modelBuffer, {
+          executionProviders: ["wasm"],
+          graphOptimizationLevel: "all",
+          logSeverityLevel: 3,
+        });
+        if (progressCallback) progressCallback(85, "Prewarming WASM Pipelines...");
+        await this._prewarmActor();
+        this.device = "wasm";
       }
-
-      // Prewarm Actor Session
-      if (progressCallback) progressCallback(85, "Prewarming Neural Pipelines...");
-      await this._prewarmActor();
 
       this.isLoaded = true;
       this.isLoading = false;
@@ -245,8 +256,18 @@ export class InBrowserAtaraxosEngine {
       const encBuf = await this._fetchBuffer(DEFAULT_BELIEF_ENC_URL, progressCallback, 0, 50, "Belief Encoder");
       const decBuf = await this._fetchBuffer(DEFAULT_BELIEF_DEC_URL, progressCallback, 50, 95, "Belief Decoder");
 
-      this.beliefEncSession = await ort.InferenceSession.create(encBuf, { executionProviders: ep });
-      this.beliefDecSession = await ort.InferenceSession.create(decBuf, { executionProviders: ep });
+      try {
+        this.beliefEncSession = await ort.InferenceSession.create(encBuf, { executionProviders: ep, logSeverityLevel: 3 });
+        this.beliefDecSession = await ort.InferenceSession.create(decBuf, { executionProviders: ep, logSeverityLevel: 3 });
+      } catch (epErr) {
+        if (hasWebGpu) {
+          console.warn("[Ataraxos] Belief WebGPU failed, falling back to WASM:", epErr);
+          this.beliefEncSession = await ort.InferenceSession.create(encBuf, { executionProviders: ["wasm"], logSeverityLevel: 3 });
+          this.beliefDecSession = await ort.InferenceSession.create(decBuf, { executionProviders: ["wasm"], logSeverityLevel: 3 });
+        } else {
+          throw epErr;
+        }
+      }
       this.beliefLoaded = true;
       if (progressCallback) progressCallback(100, "Belief X-Ray Models Ready");
     } catch (e) {
