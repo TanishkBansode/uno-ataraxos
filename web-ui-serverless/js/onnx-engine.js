@@ -140,7 +140,7 @@ export class InBrowserAtaraxosEngine {
       const modelPath = resolveActorModelPath();
 
       if (progressCallback) {
-        progressCallback(10, `Fetching Ataraxos Actor (${hasWebGpu ? "WebGPU" : "WASM"})...`);
+        progressCallback(10, `Loading AI model (${hasWebGpu ? "WebGPU" : "WASM"})...`);
       }
 
       const modelBuffer = await this._fetchBuffer(
@@ -152,7 +152,7 @@ export class InBrowserAtaraxosEngine {
       );
 
       if (progressCallback) {
-        progressCallback(75, "Creating Neural Inference Session...");
+        progressCallback(75, "Initializing engine...");
       }
 
       const executionProviders = hasWebGpu
@@ -175,7 +175,7 @@ export class InBrowserAtaraxosEngine {
       if (hasWebGpu) {
         try {
           this.session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
-          if (progressCallback) progressCallback(85, "Prewarming Neural Pipelines...");
+          if (progressCallback) progressCallback(85, "Preparing model...");
           await this._prewarmActor();
           this.device = "webgpu";
         } catch (gpuErr) {
@@ -185,7 +185,7 @@ export class InBrowserAtaraxosEngine {
             graphOptimizationLevel: "all",
             logSeverityLevel: 3,
           });
-          if (progressCallback) progressCallback(85, "Prewarming WASM Pipelines...");
+          if (progressCallback) progressCallback(85, "Preparing model...");
           await this._prewarmActor();
           this.device = "wasm";
         }
@@ -195,7 +195,7 @@ export class InBrowserAtaraxosEngine {
           graphOptimizationLevel: "all",
           logSeverityLevel: 3,
         });
-        if (progressCallback) progressCallback(85, "Prewarming WASM Pipelines...");
+        if (progressCallback) progressCallback(85, "Preparing model...");
         await this._prewarmActor();
         this.device = "wasm";
       }
@@ -203,7 +203,7 @@ export class InBrowserAtaraxosEngine {
       this.isLoaded = true;
       this.isLoading = false;
       if (progressCallback) {
-        progressCallback(100, `⚡ Ataraxos-UNO Ready (${this.device.toUpperCase()})`);
+        progressCallback(100, `Ready (${this.device.toUpperCase()})`);
       }
     } catch (err) {
       this.isLoading = false;
@@ -269,7 +269,7 @@ export class InBrowserAtaraxosEngine {
         }
       }
       this.beliefLoaded = true;
-      if (progressCallback) progressCallback(100, "Belief X-Ray Models Ready");
+      if (progressCallback) progressCallback(100, "Card tracker ready");
     } catch (e) {
       console.warn("[Ataraxos] Could not load optional in-browser belief models:", e);
     }

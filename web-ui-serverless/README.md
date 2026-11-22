@@ -1,14 +1,14 @@
-# UNO Ataraxos AI — Serverless Web Edition
+# Ataraxos-UNO Web Interface
 
-A static HTML/JS/CSS UNO game that plays against **Ataraxos AI**, an elite
-neural decision and search agent trained via Ataraxos update-equivalence search.
+A browser-based UNO interface against **Ataraxos AI**, a neural decision
+and search agent trained via update-equivalence search.
 
-- **Two inference paths cleanly supported:**
-  1. **In-Browser Serverless ONNX (`WebGPU` / `WASM`):** Runs `ataraxos_actor.onnx` (~8.58 MB FP32), `ataraxos_critic.onnx` (~8.38 MB), and belief models directly inside the browser using ONNX Runtime Web. Zero tokenizer, zero external HF weight downloads, and zero CPU fallback for attention ops!
-  2. **Daemon / Docker Space Path (`scripts/serve_model.py` `/api/predict_choice`):** Backed by `AtaraxosUnoAgent`, seamlessly supporting all modes (`blueprint`, `tier1`, `hybrid`, `static`, `risk_averse`, `online_bayesian`, and `auto` reading `runs/search_config.json`) with stateless JSON `opp_posterior` pass-through.
-- **WebGPU first:** When the browser exposes a WebGPU adapter (Metal on Apple Silicon, DirectX on Windows, Vulkan on Linux), the local GPU engine is automatically prioritized for sub-millisecond turn latency. An explicit `?api=...` parameter in the URL forces the remote daemon endpoint.
-- **Zero-Fallback Policy:** Every decision comes strictly from the neural model or search solver. If neural backends fail, the game halts with a clear diagnostic modal rather than playing random or heuristic cards.
-- **Live Belief X-Ray HUD:** Live diagnostic panel visualizing the AI's Bayesian belief over opponent hand card colors (+2, +4, and color distributions).
+- **Supported inference backends:**
+  1. **In-Browser ONNX (`WebGPU` / `WASM`):** Runs `ataraxos_actor.onnx` (8.58 MB), `ataraxos_critic.onnx` (8.38 MB), and belief models directly in the browser via ONNX Runtime Web. No tokenizers, external weight downloads, or CPU fallbacks for attention operations.
+  2. **Daemon Path (`scripts/serve_model.py` `/api/predict_choice`):** Backed by `AtaraxosUnoAgent`, supporting all search modes (`blueprint`, `tier1`, `hybrid`, `static`, `risk_averse`, `online_bayesian`, and `auto` from `runs/search_config.json`) with stateless JSON opponent belief tracking.
+- **WebGPU first:** Prioritizes local GPU execution (Metal on macOS, DirectX on Windows, Vulkan on Linux) for sub-millisecond move latency. An explicit `?api=...` query parameter directs moves to a remote daemon.
+- **Strict neural execution:** Moves are generated exclusively by the neural network or search solver. If inference fails, the game halts with a diagnostic modal rather than falling back to heuristic play.
+- **Belief X-Ray HUD:** Visualizes the AI's estimated probability distribution over your cards (+2, +4, and colors).
 
 ---
 

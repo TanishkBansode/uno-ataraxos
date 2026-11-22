@@ -1,6 +1,6 @@
 # Ataraxos-UNO
 
-**A superhuman 1v1 UNO AI powered by VRPO, EMAgnet, an Autoregressive Belief Network, and Risk-Averse Portfolio Search — running 100% serverless in your browser via ONNX Runtime Web (WebGPU/WASM).**
+**A 1v1 UNO AI with a 66% win rate against expert heuristics, built with VRPO, EMAgnet, an Autoregressive Belief Network, and Risk-Averse Portfolio Search — running directly in your browser via ONNX Runtime Web (WebGPU/WASM).**
 
 <p align="center">
   <a href="https://tanishkbansode.github.io/uno-ataraxos/">
@@ -20,15 +20,15 @@
 
 ---
 
-## Why 1v1 UNO Is Harder Than It Looks
+## 1v1 UNO Complexity
 
-Classic 108-card 1v1 UNO with same-type draw stacking (`RULES.md`) is a deep **two-player, zero-sum, imperfect-information game**:
+Classic 108-card 1v1 UNO with same-type draw stacking (`RULES.md`) is a **two-player, zero-sum, imperfect-information game**:
 - **`Reverse = Skip` combo chains:** 16 extra-turn cards let a strong player shed 4–6 cards in one uninterrupted turn.
-- **Same-type `+2` / `+4` stacking wars:** Only 8 `+2`s and 4 `+4`s exist in the finite deck — exact card counting and stack-insurance management swing games dramatically.
+- **Same-type `+2` / `+4` stacking wars:** Only 8 `+2`s and 4 `+4`s exist in the finite deck — exact card counting and stack-insurance management decide the outcome.
 - **Strategic voluntary drawing:** Players may draw even while holding playable cards to hoard Wild/`+4` closers.
 - **Finite-deck reshuffle provenance:** Tracking which unseen cards were freshly recycled from the discard pile yields exact mathematical deductions about the opponent's hand.
 
-Built from scratch on a **MacBook Air M5 (16 GB)** + **free Kaggle T4 GPUs**, Ataraxos-UNO adapts frontier 2026 imperfect-information game AI (**Ataraxos**, **VRPO**, **EMAgnet**, **PDCFR+**) into a compact **2.24M-parameter** system that runs both locally and directly inside any modern web browser.
+Built on a **MacBook Air M5 (16 GB)** and **free Kaggle T4 GPUs**, Ataraxos-UNO packages imperfect-information game algorithms (**Ataraxos**, **VRPO**, **EMAgnet**, **PDCFR+**) into a **2.24M-parameter** system that runs locally and inside modern web browsers.
 
 ---
 
@@ -84,9 +84,9 @@ All head-to-head evaluations use **mirrored duplicate decks** (each shuffled 108
 
 ### 2. Solving Rollout Overfitting — 2,400-Game Controlled Ablation
 
-Standard single-opponent Ataraxos search (`Blueprint`-only rollouts) beat the Blueprint head-to-head (**52.0%**) but slightly *degraded* against out-of-distribution opponents (`Expert` and `Exploiter`) because rollouts assumed every opponent hoards Wilds like the Blueprint.
+Standard single-opponent Ataraxos search (`Blueprint`-only rollouts) beat the Blueprint head-to-head (**52.0%**) but degraded against out-of-distribution opponents (`Expert` and `Exploiter`) because rollouts assumed every opponent hoards Wilds like the Blueprint.
 
-Adding **3-Style Portfolio Rollouts + Entropic Soft-Minimax ($\gamma = 4.0$) + Belief Tempering** solved this completely across **2,400 mirrored duplicate games** (exactly `200` games per cell on identical deck seeds):
+Adding **3-Style Portfolio Rollouts + Entropic Soft-Minimax ($\gamma = 4.0$) + Belief Tempering** eliminated rollout bias across **2,400 mirrored duplicate games** (exactly `200` games per cell on identical deck seeds):
 
 | Agent | vs 100M Blueprint (200g) | vs ExpertBot (200g) | vs 15M Exploiter (200g) | **3-Axis Avg** |
 | :--- | :---: | :---: | :---: | :---: |
@@ -102,7 +102,7 @@ Adding **3-Style Portfolio Rollouts + Entropic Soft-Minimax ($\gamma = 4.0$) + B
 | Component | Verified Result |
 | :--- | :--- |
 | **C++17 `VecUnoEnv` Throughput** | `7,797,175 steps/sec` (`40,408 games/sec`, `37.3 MB` RAM on Apple M5) |
-| **C++ vs [`uno-gym`](https://github.com/tanishkbansode/uno-gym) Parity** | `10,000 / 10,000` games (`1,903,882` steps, `9,127` reshuffles) — **100% exact** |
+| **C++ vs [`uno-gym`](https://github.com/tanishkbansode/uno-gym) Parity** | `10,000 / 10,000` games (`1,903,882` steps, `9,127` reshuffles) — **identical trajectory parity** |
 | **Belief Network Calibration** | `+1.47` train / `+1.19` val nats/hand over exact Hypergeometric prior (`0` violations / `50,048` steps) |
 | **ONNX vs PyTorch Parity** | `100 / 100` argmax match, max diff `1.97e-6` (Actor) & `1.04e-6` (Critic) |
 | **Browser JS vs C++ Parity** | `4,000 / 4,000` steps exact (`0.0` diff) for both feature encoder and fast rollout engine |

@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="uno-api" content="" />
-    <title>UNO Ataraxos AI — Serverless Web Edition</title>
+    <title>Ataraxos-UNO — 1v1 UNO AI</title>
     <link href="favicon.ico" rel="shortcut icon" type="image/x-icon" />
     <link href="css/bootstrap.min.css" rel="stylesheet" />
     <link href="css/utils.css" rel="stylesheet" />
@@ -77,11 +77,11 @@
         <!-- Clean Consumer HUD: AI Win Prob, Belief X-Ray Toggle -->
         <div id="ataraxos-hud">
           <div class="hud-pill" id="win-prob-pill">
-            <span class="hud-label">AI WIN:</span>
+            <span class="hud-label">AI Win Chance:</span>
             <span id="win-prob-val">50.0%</span>
             <div id="win-prob-bar-bg"><div id="win-prob-bar-fill"></div></div>
           </div>
-          <button id="xray-toggle-btn" class="hud-pill hud-btn" title="Toggle Belief Diagnostics">
+          <button id="xray-toggle-btn" class="hud-pill hud-btn" title="Show hand predictions">
             👁 X-RAY
           </button>
         </div>
@@ -89,7 +89,7 @@
         <!-- Belief X-Ray Panel -->
         <div id="belief-xray-panel" class="hidden">
           <div class="xray-header">
-            <span>👁 What AI Thinks You Hold</span>
+            <span>AI Hand Predictions</span>
             <button id="xray-close-btn">&times;</button>
           </div>
           <div class="xray-body">
@@ -136,7 +136,7 @@
           class="disabled"
           src="resources/desk.png"
           draggable="false"
-          title="Take +1 Card"
+          title="Draw card"
         />
         <div id="cards"></div>
 

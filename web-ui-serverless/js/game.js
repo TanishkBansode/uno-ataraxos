@@ -225,7 +225,7 @@ const backendReady = (async () => {
     modelClient.setPreferInBrowser(false);
     modelClient.setMode("auto");
     if (aiStatusText) {
-      aiStatusText.textContent = "⚡ AI Ready!";
+      aiStatusText.textContent = "AI Ready";
     }
     if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
   } else {
@@ -242,7 +242,7 @@ const backendReady = (async () => {
           aiProgressBar.style.width = `${pct}%`;
         })
         .then(() => {
-          aiStatusText.textContent = "⚡ AI Ready!";
+          aiStatusText.textContent = "AI Ready";
           aiProgressBarContainer.style.display = "none";
         })
         .catch((err) => {
@@ -261,7 +261,7 @@ async function handleLoginSubmit() {
   await backendReady;
 
   if (useInBrowser && !modelClient.isInBrowserLoaded) {
-    connectBtn.value = "Preparing Neural AI...";
+    connectBtn.value = "Loading AI...";
     connectBtn.disabled = true;
     try {
       await modelClient.initInBrowser((pct, msg) => {
@@ -275,7 +275,7 @@ async function handleLoginSubmit() {
         "[ataraxos-uno] In-browser init failed on play click:",
         initErr,
       );
-      alert(`Unable to load in-browser neural model: ${initErr.message}`);
+      alert(`Failed to load AI model: ${initErr.message}`);
       connectBtn.value = "Play!";
       connectBtn.disabled = false;
       return;
@@ -326,7 +326,7 @@ function setupLobby() {
   botCardsContainer.innerHTML = "";
   deskCardEl = null;
   cardDesk.innerHTML = `
-        <img draggable="false" src="resources/cards/UNO_CARD.png" class="card-desk" id="START_CARD" title="Click to Start Game" style="cursor: pointer;">
+        <img draggable="false" src="resources/cards/UNO_CARD.png" class="card-desk" id="START_CARD" title="Start game" style="cursor: pointer;">
     `;
 
   winnerContainer.classList.add("hidden");
@@ -591,7 +591,7 @@ function setInteractionForTurn(playerId = engine.currentMove) {
 
 function updateStackDisplay(stack) {
   const value = Number(stack) || 0;
-  cardDeckBtn.title = value > 0 ? `Take +${value} Cards` : "Take +1 Card";
+  cardDeckBtn.title = value > 0 ? `Draw ${value} cards` : "Draw card";
 
   if (value > 0) {
     stackingCount.innerText = `+${value}`;
@@ -1263,7 +1263,7 @@ function showFatalNeuralError(err) {
   });
 
   const title = document.createElement("h1");
-  title.textContent = "⚠️ FATAL NEURAL MODEL ERROR";
+  title.textContent = "AI Engine Error";
   Object.assign(title.style, {
     fontSize: "2.2rem",
     color: "#ff4d4f",
@@ -1282,7 +1282,7 @@ function showFatalNeuralError(err) {
 
   const policy = document.createElement("p");
   policy.textContent =
-    "Zero-Fallback Policy Enforced: rule-based heuristic fallbacks are strictly forbidden. The game has halted.";
+    "The game halted because the AI model failed to produce a valid move.";
   Object.assign(policy.style, {
     fontSize: "1rem",
     color: "#faad14",
@@ -1290,7 +1290,7 @@ function showFatalNeuralError(err) {
   });
 
   const button = document.createElement("button");
-  button.textContent = "Restart / Change Endpoint";
+  button.textContent = "Restart Game";
   Object.assign(button.style, {
     padding: "12px 28px",
     fontSize: "1.1rem",
@@ -1333,17 +1333,17 @@ function handleGameOver(data) {
       winnerUsername.innerText = "ATARAXOS AI WINS!";
       winnerAvatar.src = "resources/defaultAvatar.png";
     } else {
-      winnerUsername.innerText = "DRAW / TIE";
+      winnerUsername.innerText = "DRAW";
       winnerAvatar.src = "resources/defaultAvatar.png";
     }
   }, motionDuration(500));
 
   let sec = CONFIG.NEXT_GAME_TIMEOUT;
-  winnerTimeout.innerText = `Next round in ${sec} seconds...`;
+  winnerTimeout.innerText = `Next round in ${sec}s`;
   nextGameInterval = setInterval(() => {
     sec -= 1;
     if (sec > 0) {
-      winnerTimeout.innerText = `Next round in ${sec} seconds...`;
+      winnerTimeout.innerText = `Next round in ${sec}s`;
     } else {
       clearNextGameInterval();
       winnerContainer.classList.add("hidden");

@@ -1,18 +1,18 @@
-# Classic 108-Card UNO (1v1 with Same-Type Draw Stacking) Rules Specification
+# 1v1 UNO Rules Specification
 
-This document is the authoritative Single Source of Truth for the UNO game rules implemented in `uno-gym`.
+Official rules specification for `uno-gym`.
 
 ### Rule Set Classification & Standard Adherence
 
 The rule set implemented in `uno-gym` is **Classic 108-Card UNO (1v1 with Same-Type Draw Stacking)**:
 
-- **Official Mattel Rule Adherence**:
+- **Official Mattel Rules**:
   - Exactly 108 physical cards (colored 0–9, Skip, Reverse, Draw 2, Wild, Wild Draw 4).
   - Official 2-player rule: **`Reverse = Skip`** (in 1v1, playing a Reverse acts as a Skip, giving the player an immediate extra turn).
   - Official 1v1 initial card redrawing (non-numbers buried until a number card starts the game).
-- **Popular Competitive Community Extension**:
-  - **Same-Type Draw Stacking / Countering**: While standard vanilla Mattel rules do not permit stacking draw cards, same-type draw stacking (`+2` countered by `+2`, and `+4` countered by `+4`) is a universally popular competitive community house rule. We enforce strict same-type isolation (cross-type stacking like `+4` on `+2` or `+2` on `+4` is strictly forbidden).
-  - **Wild Draw 4 is always playable** on a normal turn, regardless of the other cards in the player's hand. Mattel's standard rule restricts it to hands with no matching color; this project intentionally does not.
+- **Competitive Rule Extensions**:
+  - **Same-Type Draw Stacking**: Same-type stacking (`+2` on `+2`, `+4` on `+4`) is enabled. Cross-type stacking (`+4` on `+2` or `+2` on `+4`) is prohibited.
+  - **Wild Draw 4 is always playable** on a normal turn, regardless of the other cards in hand (standard color-matching restrictions are omitted).
 
 ---
 
