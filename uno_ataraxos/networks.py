@@ -7,7 +7,7 @@ Replaces slow quadratic self-attention over fixed card tokens with:
 4. Deep Pre-Norm SwiGLU ResMLP Trunk (4 blocks, 512 dims)
 
 Hardware & Precision:
-- M5 MPS-optimized with bfloat16 autocast support
+- Apple Silicon (MPS) and NVIDIA CUDA optimized with bfloat16 autocast support
 - Explicit null key-value token guarantees zero NaNs on Turn 0 (all-padded history)
 - Outputs cast explicitly to float32 for downstream RL math numerical stability
 """
@@ -66,7 +66,7 @@ class TransformerBlock(nn.Module):
 class UnoHybridBackbone(nn.Module):
     """Hybrid ResMLP + Masked Dilated-Conv + 4-Query Cross-Attention Backbone.
 
-    Processes imperfect (or privileged critic) state in ~18 ms at B=512 on Apple M5 MPS.
+    Processes imperfect (or privileged critic) state in ~18 ms at B=512 on Apple Silicon.
     """
 
     def __init__(

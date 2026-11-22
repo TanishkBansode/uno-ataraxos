@@ -7,9 +7,9 @@ Generates diverse online multi-policy trajectories across 256 parallel environme
 - 10% (24 envs): Blueprint vs GreedyBot / RandomBot
 
 Hardware & Precision:
-- Apple Silicon M5 MPS: bfloat16 autocast (uncompiled)
-- NVIDIA Ampere+ (L4/A100): bfloat16 autocast (optional torch.compile)
-- NVIDIA Turing/Volta (T4): float16 autocast + GradScaler
+- Apple Silicon (MPS): bfloat16 autocast (uncompiled)
+- NVIDIA CUDA (Compute >= 8.0): bfloat16 autocast (optional torch.compile)
+- NVIDIA CUDA (Compute < 8.0): float16 autocast + GradScaler
 - CPU: float32
 """
 
@@ -254,14 +254,14 @@ def collect_validation_positions(
 
 
 def train_belief(
-    blueprint_ckpt: str = "runs/sanity_3m/latest.pt",
+    blueprint_ckpt: str = "runs/blueprint_100m/latest.pt",
     snapshots_dir: Optional[str] = None,
     total_positions: int = 500_000,
     batch_size: int = 256,
     lr: float = 4e-4,
     log_every_steps: int = 50,
     eval_every_steps: int = 250,
-    run_dir: str = "runs/belief_smoke",
+    run_dir: str = "runs/belief_20m",
     compile_model: bool = False,
     seed: int = 42,
 ) -> None:
@@ -617,14 +617,14 @@ def train_belief(
 
 def main():
     parser = argparse.ArgumentParser(description="Uno-Ataraxos Online Diverse-Mixture Belief Network Trainer")
-    parser.add_argument("--blueprint-ckpt", type=str, default="runs/sanity_3m/latest.pt", help="Path to blueprint actor checkpoint")
+    parser.add_argument("--blueprint-ckpt", type=str, default="runs/blueprint_100m/latest.pt", help="Path to blueprint actor checkpoint")
     parser.add_argument("--snapshots-dir", type=str, default=None, help="Path to historical opponent snapshots directory")
     parser.add_argument("--total-positions", type=int, default=500_000, help="Total positions to train on")
     parser.add_argument("--batch-size", type=int, default=256, help="Minibatch size")
     parser.add_argument("--lr", type=float, default=4e-4, help="Learning rate")
     parser.add_argument("--log-every-steps", type=int, default=50, help="Steps between training logs")
     parser.add_argument("--eval-every-steps", type=int, default=250, help="Steps between validation evaluations")
-    parser.add_argument("--run-dir", type=str, default="runs/belief_smoke", help="Directory to save checkpoints & metrics")
+    parser.add_argument("--run-dir", type=str, default="runs/belief_20m", help="Directory to save checkpoints & metrics")
     parser.add_argument("--compile", action="store_true", help="Compile belief model with torch.compile on CUDA")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()

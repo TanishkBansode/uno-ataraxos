@@ -9,7 +9,7 @@ Core Components:
 3. hypergeometric_hand_nll: Exact analytical multivariate hypergeometric prior yardstick.
 4. UnoBeliefNet: Fast Board+History Encoder (~680k) + Sufficient-Statistic Multiset Decoder (~1.7M)
    (~2.4M total parameters).
-5. sample_opp_hands: Fast batched world sampler (< 20 ms for K=128, k=7 on Apple Silicon M5).
+5. sample_opp_hands: Fast batched world sampler (< 20 ms for K=128, k=7 on Apple Silicon).
 """
 
 from __future__ import annotations

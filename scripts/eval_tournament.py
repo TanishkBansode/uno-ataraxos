@@ -16,10 +16,10 @@ Compares 4 contenders on 100 common random duplicate decks (EXACTLY 200 mirrored
 Against:
 - Axis 1: Pure 100M Blueprint
 - Axis 2: ExpertHeuristicBot
-- Axis 3: runs/exploiter_15m/best.pt
+- Axis 3: runs/exploiter_20m/best.pt
 
 Usage:
-    python scripts/eval_ood_ablation.py
+    python scripts/eval_tournament.py
 """
 
 from __future__ import annotations
@@ -151,7 +151,7 @@ def play_duplicate_match(
 def run_ood_ablation(
     blueprint_path: str = "runs/blueprint_100m/latest.pt",
     belief_path: str = "runs/belief_20m/best.pt",
-    exploiter_path: str = "runs/exploiter_15m/best.pt",
+    exploiter_path: str = "runs/exploiter_20m/best.pt",
     num_decks: int = 100,
     out_config_path: str = "runs/search_config.json",
 ) -> Dict[str, Any]:
@@ -431,7 +431,7 @@ def main():
     parser = argparse.ArgumentParser(description="4-Way Controlled Ablation")
     parser.add_argument("--blueprint", type=str, default="runs/blueprint_100m/latest.pt")
     parser.add_argument("--belief", type=str, default="runs/belief_20m/best.pt")
-    parser.add_argument("--exploiter", type=str, default="runs/exploiter_15m/best.pt")
+    parser.add_argument("--exploiter", type=str, default="runs/exploiter_20m/best.pt")
     parser.add_argument("--num-decks", type=int, default=100)
     parser.add_argument("--out-config", type=str, default="runs/search_config.json")
     args = parser.parse_args()

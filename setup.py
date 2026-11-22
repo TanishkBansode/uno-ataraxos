@@ -9,10 +9,10 @@ extra_compile_args = ["-O3"]
 extra_link_args = []
 
 if sys_name == "Darwin" and mach_name in ("arm64", "aarch64"):
-    # macOS Apple Silicon ARM64 (M1/M2/M3/M4/M5)
+    # macOS Apple Silicon ARM64
     extra_compile_args.extend(["-mcpu=native", "-stdlib=libc++"])
 elif sys_name == "Linux" and mach_name in ("x86_64", "amd64"):
-    # Linux x86_64 (Kaggle / Colab / Cloud GPU instances)
+    # Linux x86_64
     # NEVER pass -mcpu=native to GCC x86_64!
     extra_compile_args.extend(["-march=native", "-pthread"])
     extra_link_args.extend(["-pthread"])

@@ -1,9 +1,9 @@
-"""VRPO + Dynamically Damped EMAgnet Self-Play Trainer for 1v1 UNO (Milestone 3A & 3B Prep).
+"""VRPO + Dynamically Damped EMAgnet Self-Play Trainer for 1v1 UNO.
 
 Cross-Platform Architecture:
-- Apple Silicon M5 (macOS ARM64): bfloat16 autocast (no GradScaler, no torch.compile).
-- NVIDIA Ampere / Hopper / Blackwell (L4, A100, H100): bfloat16 autocast + optional torch.compile.
-- NVIDIA Turing / Volta (Kaggle/Colab T4, V100): float16 autocast + torch.amp.GradScaler("cuda").
+- Apple Silicon (macOS ARM64 MPS): bfloat16 autocast (no GradScaler, no torch.compile).
+- NVIDIA CUDA (Compute >= 8.0): bfloat16 autocast + optional torch.compile.
+- NVIDIA CUDA (Compute < 8.0): float16 autocast + torch.amp.GradScaler("cuda").
 - CPU: float32 fallback.
 
 RL Features:
@@ -56,7 +56,7 @@ from uno_ataraxos.symmetry import INV_ACTION_61, apply_s4_batch
 def get_clean_state_dict(model: torch.nn.Module) -> dict:
     """Return state_dict unwrapped from torch.compile (_orig_mod) if present.
 
-    Ensures 100% checkpoint portability between compiled CUDA and uncompiled M5.
+    Ensures 100% checkpoint portability between compiled CUDA and uncompiled devices.
     """
     raw_model = getattr(model, "_orig_mod", model)
     return raw_model.state_dict()
@@ -94,13 +94,13 @@ def train(
         device_type = "cuda"
         capability = torch.cuda.get_device_capability()
         if capability[0] >= 8:
-            # Ampere / Hopper / Blackwell (A100, L4, H100, RTX 30xx-50xx)
+            # Modern CUDA (Compute >= 8.0)
             autocast_dtype = torch.bfloat16
             use_scaler = False
             scaler = None
             amp_desc = f"bfloat16 (compute capability {capability[0]}.{capability[1]})"
         else:
-            # Turing / Volta (Free Kaggle/Colab T4, V100) -> float16 + GradScaler
+            # Legacy CUDA (Compute < 8.0) -> float16 + GradScaler
             autocast_dtype = torch.float16
             use_scaler = True
             scaler = torch.amp.GradScaler("cuda")

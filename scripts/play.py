@@ -2,7 +2,7 @@
 """Interactive Terminal 1v1 UNO CLI with live Belief X-Ray and Move Equity Display.
 
 Usage:
-    python scripts/play_cli.py --mode hybrid --blueprint runs/sanity_3m/latest.pt --belief runs/belief_smoke/best.pt --xray
+    python scripts/play.py --mode hybrid --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt --xray
 """
 
 from __future__ import annotations
@@ -44,8 +44,8 @@ def color_card(card_str: str) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Play 1v1 UNO vs Ataraxos AI with Belief X-Ray")
     parser.add_argument("--mode", type=str, default="hybrid", choices=["blueprint", "mmd_search", "hybrid"], help="Agent mode")
-    parser.add_argument("--blueprint", type=str, default="runs/sanity_3m/latest.pt", help="Path to blueprint checkpoint")
-    parser.add_argument("--belief", type=str, default="runs/belief_smoke/best.pt", help="Path to belief checkpoint")
+    parser.add_argument("--blueprint", type=str, default="runs/blueprint_100m/latest.pt", help="Path to blueprint checkpoint")
+    parser.add_argument("--belief", type=str, default="runs/belief_20m/best.pt", help="Path to belief checkpoint")
     parser.add_argument("--critic", type=str, default=None, help="Path to critic checkpoint")
     parser.add_argument("--xray", action="store_true", default=True, help="Display live Belief X-Ray diagnostics")
     parser.add_argument("--human-player", type=int, default=0, choices=[0, 1], help="Seat of human player (0 or 1)")

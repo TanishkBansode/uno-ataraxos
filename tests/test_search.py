@@ -6,7 +6,7 @@ Tests:
 3. Puzzle B: Mandatory +2 Counter vs Lethal (P(+2) > 99%).
 4. Puzzle C: Guaranteed 2-Card Action Win (P(b-skip) > 90%).
 5. Tournament-Fair 50-game live uno_gym.UnoEnv integration test.
-6. M5 MPS Search Latency Benchmarks.
+6. Search Latency Benchmarks.
 """
 
 from __future__ import annotations
@@ -42,12 +42,12 @@ def loaded_models():
     """Load pretrained sanity blueprint and belief checkpoints."""
     device = get_device()
     actor = UnoActorNet().to(device)
-    bp_data = torch.load("runs/sanity_3m/latest.pt", map_location=device)
+    bp_data = torch.load("runs/blueprint_100m/latest.pt", map_location=device)
     actor.load_state_dict(bp_data["actor_state_dict"])
     actor.eval()
 
     belief = UnoBeliefNet().to(device)
-    bel_data = torch.load("runs/belief_smoke/best.pt", map_location=device)
+    bel_data = torch.load("runs/belief_20m/best.pt", map_location=device)
     belief.load_state_dict(bel_data["belief_net"])
     belief.eval()
 
@@ -225,8 +225,8 @@ def test_05_uno_gym_50_games(loaded_models):
     import uno_gym
 
     agent = AtaraxosUnoAgent(
-        blueprint_ckpt="runs/sanity_3m/latest.pt",
-        belief_ckpt="runs/belief_smoke/best.pt",
+        blueprint_ckpt="runs/blueprint_100m/latest.pt",
+        belief_ckpt="runs/belief_20m/best.pt",
         mode="hybrid",
         K=16,
         depth=4,
@@ -262,16 +262,16 @@ def test_05_uno_gym_50_games(loaded_models):
     assert completed == 50, f"Only {completed}/50 games finished"
 
 
-def test_06_m5_latency_gates(loaded_models):
-    """Benchmark 50 mid-game turns (K=128, depth=12) and 20 endgame turns on M5 MPS.
+def test_06_search_latency_gates(loaded_models):
+    """Benchmark 50 mid-game turns (K=128, depth=12) and 20 endgame turns.
 
     Verifies mean latency target < 80-100 ms/move.
     """
     actor, belief, device = loaded_models
 
     agent_mmd = AtaraxosUnoAgent(
-        blueprint_ckpt="runs/sanity_3m/latest.pt",
-        belief_ckpt="runs/belief_smoke/best.pt",
+        blueprint_ckpt="runs/blueprint_100m/latest.pt",
+        belief_ckpt="runs/belief_20m/best.pt",
         mode="mmd_search",
         device=device,
         K=128,
@@ -279,8 +279,8 @@ def test_06_m5_latency_gates(loaded_models):
     )
 
     agent_cfr = AtaraxosUnoAgent(
-        blueprint_ckpt="runs/sanity_3m/latest.pt",
-        belief_ckpt="runs/belief_smoke/best.pt",
+        blueprint_ckpt="runs/blueprint_100m/latest.pt",
+        belief_ckpt="runs/belief_20m/best.pt",
         mode="hybrid",
         device=device,
         K=64,
@@ -289,7 +289,7 @@ def test_06_m5_latency_gates(loaded_models):
     )
 
     agent_bp = AtaraxosUnoAgent(
-        blueprint_ckpt="runs/sanity_3m/latest.pt",
+        blueprint_ckpt="runs/blueprint_100m/latest.pt",
         mode="blueprint",
         device=device,
     )
@@ -395,8 +395,8 @@ def test_07_research_knobs_and_synthetic_sanity(loaded_models):
 
     # 3. Test AtaraxosUnoAgent auto-loading search_config.json
     agent = AtaraxosUnoAgent(
-        blueprint_ckpt="runs/sanity_3m/latest.pt",
-        belief_ckpt="runs/belief_smoke/best.pt",
+        blueprint_ckpt="runs/blueprint_100m/latest.pt",
+        belief_ckpt="runs/belief_20m/best.pt",
         mode="hybrid",
         warmup=False,
     )

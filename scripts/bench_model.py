@@ -1,4 +1,4 @@
-"""Benchmark M5 MPS latency, parameter counts, and peak memory for uno-ataraxos (Milestone 2.5).
+"""Benchmark neural network latency, parameter counts, and peak memory for uno-ataraxos.
 
 Benchmarks BOTH FP32 and BF16 autocast across:
 1. Actor rollout inference (B = 512, no_grad)
@@ -39,11 +39,11 @@ def sync_device(device: torch.device):
         torch.cuda.synchronize()
 
 
-def benchmark_m5():
+def benchmark():
     device = get_device()
     device_type = "mps" if device.type == "mps" else ("cuda" if device.type == "cuda" else "cpu")
     print("=" * 72)
-    print("  UNO-ATARAXOS MILESTONE 2.5: M5 MPS HYBRID NEURAL BENCHMARK")
+    print("  UNO-ATARAXOS NEURAL MODEL BENCHMARK")
     print("=" * 72)
     print(f"Platform:       {platform.platform()} ({platform.machine()})")
     print(f"Device:         {device} (PyTorch {torch.__version__})")
@@ -247,4 +247,4 @@ def benchmark_m5():
 
 
 if __name__ == "__main__":
-    benchmark_m5()
+    benchmark()

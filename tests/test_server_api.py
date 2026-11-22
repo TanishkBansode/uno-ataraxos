@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automated integration test for scripts/serve_model.py.
+"""Automated integration test for scripts/serve.py.
 
 Verifies:
 1. Static asset serving (index.html, JS, CSS, ONNX model headers)
@@ -62,11 +62,11 @@ def make_sample_state():
 
 def main():
     port = find_free_port()
-    print(f"Starting serve_model.py on port {port}...")
+    print(f"Starting serve.py on port {port}...")
 
     cmd = [
         sys.executable,
-        "scripts/serve_model.py",
+        "scripts/serve.py",
         "--port",
         str(port),
         "--blueprint",
@@ -257,7 +257,7 @@ def main():
         actor.load_state_dict(clean_state)
         actor.eval()
 
-        session = ort.InferenceSession("web-ui-serverless/model/ataraxos_actor.onnx")
+        session = ort.InferenceSession("web/model/ataraxos_actor.onnx")
 
         eng = UnoEngine(42)
         eng.reset()

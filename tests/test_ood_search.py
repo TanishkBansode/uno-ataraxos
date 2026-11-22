@@ -5,7 +5,7 @@ Invariants tested:
 2. Soft-Minimax Risk Aversion Math (Balanced move strictly beats fragile trap).
 3. Online Bayesian Identification (Differentiates ExpertHeuristicBot from Blueprint).
 4. Skip/Reverse Extra-Turn Safety Invariant (Never updates from self extra turn).
-5. Latency Overhead Benchmark (< 5 ms/move difference on M5 MPS).
+5. Latency Overhead Benchmark (< 5 ms/move difference).
 """
 
 from __future__ import annotations

@@ -9,7 +9,7 @@ and reports:
 4. Turn-1 vs Turn-21 synthetic sanity gate verification.
 
 Usage:
-    python scripts/diagnose_blueprint.py --blueprint runs/blueprint_100m/latest.pt --games 500
+    python scripts/diagnose_policy.py --blueprint runs/blueprint_100m/latest.pt --games 500
 """
 
 from __future__ import annotations

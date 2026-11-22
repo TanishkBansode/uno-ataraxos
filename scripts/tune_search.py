@@ -16,7 +16,7 @@ Usage:
     python scripts/tune_search.py \
         --blueprint runs/blueprint_100m/latest.pt \
         --belief runs/belief_20m/best.pt \
-        --exploiter runs/exploiter_warm_3m/best.pt
+        --exploiter runs/exploiter_20m/best.pt
 """
 
 from __future__ import annotations
@@ -146,10 +146,7 @@ def resolve_exploiter_path(path_str: str) -> str:
     if p.exists():
         return str(p)
     candidates = [
-        "runs/exploiter_warm_3m/best.pt",
         "runs/exploiter_20m/best.pt",
-        "runs/exploiter_15m/best.pt",
-        "runs/exploiter_smoke/best.pt",
     ]
     for c in candidates:
         if Path(c).exists():
@@ -552,7 +549,7 @@ def main():
     parser = argparse.ArgumentParser(description="Scientific 2-Stage 3-Axis Pareto Search Tuning")
     parser.add_argument("--blueprint", type=str, default="runs/blueprint_100m/latest.pt", help="Path to Blueprint checkpoint")
     parser.add_argument("--belief", type=str, default="runs/belief_20m/best.pt", help="Path to Belief checkpoint")
-    parser.add_argument("--exploiter", type=str, default="runs/exploiter_warm_3m/best.pt", help="Path to Exploiter checkpoint")
+    parser.add_argument("--exploiter", type=str, default="runs/exploiter_20m/best.pt", help="Path to Exploiter checkpoint")
     parser.add_argument("--out-config", type=str, default="runs/search_config.json", help="Path to output search_config.json")
     parser.add_argument("--stage1-decks", type=int, default=60, help="Decks for Stage 1 coarse screening")
     parser.add_argument("--stage2-decks", type=int, default=150, help="Decks for Stage 2 scorecard")

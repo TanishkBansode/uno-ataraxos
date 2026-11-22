@@ -9,7 +9,7 @@ Exports:
 2. UnoBeliefNet -> model/belief_enc.onnx + model/belief_dec.onnx (for in-browser Belief X-Ray)
 
 Usage:
-    python scripts/export_ataraxos_onnx.py --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt --weight-int8
+    python scripts/export_onnx.py --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt --weight-int8
 """
 
 from __future__ import annotations
@@ -449,7 +449,7 @@ def main():
     parser = argparse.ArgumentParser(description="Export Ataraxos-UNO models to WebGPU ONNX")
     parser.add_argument("--blueprint", type=str, default="runs/blueprint_100m/latest.pt", help="Path to blueprint checkpoint")
     parser.add_argument("--belief", type=str, default="runs/belief_20m/best.pt", help="Path to belief checkpoint")
-    parser.add_argument("--output-dir", type=str, default="web-ui-serverless/model", help="Target output directory")
+    parser.add_argument("--output-dir", type=str, default="web/model", help="Target output directory")
     parser.add_argument("--weight-int8", action="store_true", help="Also generate weight-only INT8 quantized actor ONNX")
     parser.add_argument("--skip-belief", action="store_true", help="Skip belief net export")
     parser.add_argument("--skip-parity", action="store_true", help="Skip 100-state parity test")

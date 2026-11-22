@@ -28,7 +28,7 @@ Classic 108-card 1v1 UNO with same-type draw stacking (`RULES.md`) is a **two-pl
 - **Strategic voluntary drawing:** Players may draw even while holding playable cards to hoard Wild/`+4` closers.
 - **Finite-deck reshuffle provenance:** Tracking which unseen cards were freshly recycled from the discard pile yields exact mathematical deductions about the opponent's hand.
 
-Built on a **MacBook Air M5 (16 GB)** and **free Kaggle T4 GPUs**, Ataraxos-UNO packages imperfect-information game algorithms (**Ataraxos**, **VRPO**, **EMAgnet**, **PDCFR+**) into a **2.24M-parameter** system that runs locally and inside modern web browsers.
+Built with PyTorch and C++17, Ataraxos-UNO packages imperfect-information game algorithms (**Ataraxos**, **VRPO**, **EMAgnet**, **PDCFR+**) into a **2.24M-parameter** system that runs locally and inside modern web browsers.
 
 ---
 
@@ -37,12 +37,12 @@ Built on a **MacBook Air M5 (16 GB)** and **free Kaggle T4 GPUs**, Ataraxos-UNO 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  1. C++17 Vectorized Engine (VecUnoEnv)                                  │
-│     • 7.80M steps/sec on Apple M5 • Exact 10,000-game parity vs uno-gym  │
+│     • 7.80M steps/sec on Apple Silicon • Exact 10,000-game parity vs uno-gym  │
 │     • Tracks 48-move history + exact post-reshuffle card provenance      │
 └────────────────────────────────────┬─────────────────────────────────────┘
                                      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  2. Self-Play Blueprint (100M Steps / ~2.45M Games — Kaggle T4)          │
+│  2. Self-Play Blueprint (100M Steps / ~2.45M Games)                      │
 │     • Hybrid SwiGLU ResMLP + Dilated-Conv History + 4-Query Cross-Attn   │
 │     • VRPO Q-Boosting (Expected SARSA(λ) for non-alternating turns)      │
 │     • Dynamically Damped EMAgnet + 24× S4 Color-Permutation Symmetry     │
@@ -101,7 +101,7 @@ Adding **3-Style Portfolio Rollouts + Entropic Soft-Minimax ($\gamma = 4.0$) + B
 
 | Component | Verified Result |
 | :--- | :--- |
-| **C++17 `VecUnoEnv` Throughput** | `7,797,175 steps/sec` (`40,408 games/sec`, `37.3 MB` RAM on Apple M5) |
+| **C++17 `VecUnoEnv` Throughput** | `7,797,175 steps/sec` (`40,408 games/sec`, `37.3 MB` RAM on Apple Silicon) |
 | **C++ vs [`uno-gym`](https://github.com/tanishkbansode/uno-gym) Parity** | `10,000 / 10,000` games (`1,903,882` steps, `9,127` reshuffles) — **identical trajectory parity** |
 | **Belief Network Calibration** | `+1.47` train / `+1.19` val nats/hand over exact Hypergeometric prior (`0` violations / `50,048` steps) |
 | **ONNX vs PyTorch Parity** | `100 / 100` argmax match, max diff `1.97e-6` (Actor) & `1.04e-6` (Critic) |
@@ -122,10 +122,10 @@ cd uno-ataraxos
 pip install -e .
 
 # Option 1: Launch local Web UI + full Risk-Averse Search server at http://localhost:8000
-python scripts/serve_model.py
+python scripts/serve.py
 
 # Option 2: Play in terminal with live Belief X-Ray & move equities
-python scripts/play_cli.py \
+python scripts/play.py \
   --blueprint runs/blueprint_100m/latest.pt \
   --belief runs/belief_20m/best.pt \
   --xray
@@ -138,8 +138,8 @@ node tests/test_js_features_parity.mjs     # 4,000-step JS vs C++ feature parity
 node tests/test_fast_rollout_parity.mjs    # 4,000-step JS vs C++ rollout parity
 ```
 
-### Train From Scratch (Local Apple Silicon MPS or Free Kaggle T4)
-See **[`docs/CLOUD_TRAINING.md`](docs/CLOUD_TRAINING.md)** for full step-by-step commands to train the 100M Blueprint (~3.2 hrs on Kaggle T4), 20M Belief Network (~52 mins), and Neural Exploiter Red-Team.
+### Train From Scratch
+See **[`docs/TRAINING.md`](docs/TRAINING.md)** for step-by-step instructions to train the 100M Blueprint, 20M Belief Network, and Neural Exploiter Red-Team.
 
 ---
 
@@ -159,10 +159,10 @@ uno-ataraxos/
 │   ├── opponent_model.py        # Online Bayesian opponent style & surprisal tracker
 │   ├── agent.py                 # Unified tournament-fair agent (VecUnoEnv + uno-gym adapter)
 │   └── train_*.py               # Blueprint, Belief, and Neural Exploiter training loops
-├── web-ui-serverless/           # Static WebGPU/WASM web app deployed to GitHub Pages
-├── scripts/                     # serve_model.py, play_cli.py, ONNX export, ablations & E2E tests
+├── web/                         # Static WebGPU/WASM web app deployed to GitHub Pages
+├── scripts/                     # serve.py, play.py, train.py, export_onnx.py, and tuning/evaluation
 ├── tests/                       # 73 pytest tests + JS/C++ bit-for-bit parity tests
-└── docs/                        # Cloud training guide & gameplay screenshot
+└── docs/                        # Training guide & gameplay screenshot
 ```
 
 ---

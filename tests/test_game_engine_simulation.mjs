@@ -1,4 +1,4 @@
-import { UnoGameEngine } from "../web-ui-serverless/js/game-engine.js";
+import { UnoGameEngine } from "../web/js/game-engine.js";
 
 console.log("\n=== [SIMULATION TEST] Running 50 Full Games in UnoGameEngine ===");
 

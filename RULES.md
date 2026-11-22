@@ -1,10 +1,10 @@
 # 1v1 UNO Rules Specification
 
-Official rules specification for `uno-gym`.
+Official rules specification for `Ataraxos-UNO`.
 
 ### Rule Set Classification & Standard Adherence
 
-The rule set implemented in `uno-gym` is **Classic 108-Card UNO (1v1 with Same-Type Draw Stacking)**:
+The rule set implemented in `Ataraxos-UNO` is **Classic 108-Card UNO (1v1 with Same-Type Draw Stacking)**:
 
 - **Official Mattel Rules**:
   - Exactly 108 physical cards (colored 0–9, Skip, Reverse, Draw 2, Wild, Wild Draw 4).

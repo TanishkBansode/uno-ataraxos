@@ -6,14 +6,14 @@ import {
   AtaraxosFeatureTracker,
   CARD_NAMES,
   ACTION_NAMES,
-} from "../web-ui-serverless/js/ataraxos-features.js";
+} from "../web/js/ataraxos-features.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const tracesPath = path.join(__dirname, "cpp_game_traces.json");
 if (!fs.existsSync(tracesPath)) {
-  console.error(`Trace file ${tracesPath} does not exist. Run scripts/export_cpp_game_traces.py first.`);
+  console.error(`Trace file ${tracesPath} does not exist. Run scripts/export_traces.py first.`);
   process.exit(1);
 }
 

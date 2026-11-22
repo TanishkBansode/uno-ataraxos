@@ -51,7 +51,7 @@ function resolveDefaultApiUrl() {
     }
   }
 
-  // Local development: scripts/serve_model.py serves the UI and the API from
+  // Local development: scripts/serve.py serves the UI and the API from
   // the same origin, regardless of which port was chosen.
   if (LOCAL_HOSTNAMES.has(hostname)) {
     return window.location.origin;

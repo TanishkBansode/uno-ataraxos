@@ -1,14 +1,11 @@
-"""One-Click Cloud Launcher for uno-ataraxos 100M-Step Blueprint Training Run.
-
-Compatible with:
-- Kaggle Notebooks (NVIDIA T4 / P100 / L4)
-- Google Colab (Free T4 / Colab Pro A100 / L4)
-- Dedicated Cloud GPU instances (RunPod, Lambda, Vast.ai, GCP, AWS)
+"""One-Click Launcher for uno-ataraxos 100M-Step Blueprint Self-Play Training Run.
 
 Handles automatic environment detection, C++ extension verification, GPU precision
-configuration, and resumable 100M-step self-play training.
+configuration, and resumable 100M-step self-play training across Apple Silicon (MPS),
+NVIDIA CUDA, and CPU.
 """
 
+import argparse
 import os
 import sys
 import platform
@@ -16,50 +13,40 @@ import subprocess
 import torch
 
 
-def detect_environment():
-    """Detect cloud notebook platform and setup default paths."""
-    if os.path.exists("/kaggle/working"):
-        env_name = "Kaggle"
-        default_run_dir = "/kaggle/working/runs/blueprint_100m"
-        data_dir = "/kaggle/working"
-    elif "COLAB_GPU" in os.environ or os.path.exists("/content"):
-        env_name = "Google Colab"
-        # If Google Drive is mounted, prefer saving to Drive for persistence
-        if os.path.exists("/content/drive/MyDrive"):
-            default_run_dir = "/content/drive/MyDrive/uno_ataraxos/runs/blueprint_100m"
-        else:
-            default_run_dir = "/content/runs/blueprint_100m"
-        data_dir = "/content"
-    else:
-        env_name = f"Local/Cloud ({platform.system()} {platform.machine()})"
-        default_run_dir = "runs/blueprint_100m"
-        data_dir = "."
-
-    return env_name, default_run_dir, data_dir
-
-
 def main():
-    env_name, default_run_dir, data_dir = detect_environment()
+    parser = argparse.ArgumentParser(description="uno-ataraxos 100M Blueprint Training Launcher")
+    parser.add_argument("--run-dir", type=str, default="runs/blueprint_100m", help="Directory for checkpoints and metrics")
+    parser.add_argument("--total-steps", type=int, default=100_000_000, help="Total environment steps to train")
+    parser.add_argument("--num-envs", type=int, default=512, help="Number of vectorized parallel environments")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument("--compile", action="store_true", help="Enable torch.compile (CUDA only)")
+    parser.add_argument("--resume", type=str, default=None, help="Explicit checkpoint path to resume from")
+    args = parser.parse_args()
+
+    platform_desc = f"{platform.system()} {platform.machine()}"
 
     print("=" * 72)
-    print("  UNO-ATARAXOS 100M-STEP CLOUD BLUEPRINT LAUNCHER")
+    print("  UNO-ATARAXOS 100M-STEP BLUEPRINT TRAINING LAUNCHER")
     print("=" * 72)
-    print(f"Platform:          {env_name}")
+    print(f"Platform:          {platform_desc}")
     print(f"Python Version:    {sys.version.split()[0]}")
     print(f"PyTorch Version:   {torch.__version__}")
     print(f"CUDA Available:    {torch.cuda.is_available()}")
 
+    compile_flag = args.compile
     if torch.cuda.is_available():
         gpu_name = torch.cuda.get_device_name(0)
         capability = torch.cuda.get_device_capability(0)
         vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         print(f"GPU:               {gpu_name} ({vram_gb:.1f} GB VRAM, sm_{capability[0]}{capability[1]})")
         if capability[0] >= 8:
-            precision_note = "bfloat16 (Ampere+ Native Tensor Cores)"
-            compile_flag = True
+            precision_note = "bfloat16 (Native Tensor Cores)"
+            if not args.compile:
+                compile_flag = True
         else:
-            precision_note = "float16 + GradScaler (Turing/Volta e.g. T4)"
-            compile_flag = False  # torch.compile on T4 is optional / slower warmup
+            precision_note = "float16 + GradScaler"
+            compile_flag = False
+        print(f"Precision:         {precision_note}")
     elif torch.backends.mps.is_available():
         print("Device:            Apple Silicon MPS (bfloat16)")
         compile_flag = False
@@ -80,7 +67,7 @@ def main():
         vec = VecUnoEnv(num_envs=4, seed=42)
         obs = vec.reset()
         print("✓ C++ VecUnoEnv extension verified & functional!")
-    except (ImportError, ModuleNotFoundError) as e:
+    except (ImportError, ModuleNotFoundError):
         print("Building C++ extension in-place...")
         subprocess.check_call([sys.executable, "setup.py", "build_ext", "--inplace"], cwd=repo_root)
         import uno_ataraxos as ua
@@ -89,20 +76,24 @@ def main():
         obs = vec.reset()
         print("✓ C++ extension built successfully!")
 
-    # 2. Check for existing checkpoint to resume across session timeouts
-    latest_ckpt = os.path.join(default_run_dir, "latest.pt")
-    resume_arg = latest_ckpt if os.path.isfile(latest_ckpt) else None
-    if resume_arg:
-        print(f"✓ Found existing checkpoint: {resume_arg} -> Auto-resuming!")
+    # 2. Check for existing checkpoint to resume
+    if args.resume:
+        resume_arg = args.resume
+        print(f"✓ Explicit resume checkpoint specified: {resume_arg}")
     else:
-        print(f"✓ Starting fresh run in {default_run_dir}")
+        latest_ckpt = os.path.join(args.run_dir, "latest.pt")
+        resume_arg = latest_ckpt if os.path.isfile(latest_ckpt) else None
+        if resume_arg:
+            print(f"✓ Found existing checkpoint: {resume_arg} -> Auto-resuming!")
+        else:
+            print(f"✓ Starting fresh run in {args.run_dir}")
 
     # 3. Launch Training
     from uno_ataraxos.train_blueprint import train
 
     train(
-        total_steps=100_000_000,
-        num_envs=512,
+        total_steps=args.total_steps,
+        num_envs=args.num_envs,
         rollout_steps=64,
         minibatch_size=1024,
         ppo_epochs=2,
@@ -110,10 +101,10 @@ def main():
         num_eval_decks=250,
         snapshot_every_steps=10_000_000,
         save_every_mins=15.0,
-        run_dir=default_run_dir,
+        run_dir=args.run_dir,
         resume=resume_arg,
         compile_model=compile_flag,
-        seed=42,
+        seed=args.seed,
     )
 
 

@@ -2,7 +2,7 @@
 """Unified Daemon & Docker Space HTTP Server for Ataraxos-UNO.
 
 Serves:
-1. Static files from `web-ui-serverless/` (HTML, JS, CSS, ONNX models, icons/sounds).
+1. Static files from `web/` (HTML, JS, CSS, ONNX models, icons/sounds).
 2. GET `/api/health`: Service health check.
 3. POST `/api/predict_choice`:
    - Backed by AtaraxosUnoAgent.
@@ -12,7 +12,7 @@ Serves:
    - Returns: `{ action_id, action_key, action_probs, win_prob, mode_used, latency_ms, belief_xray, opp_posterior }`.
 
 Usage:
-    python scripts/serve_model.py --port 8000 --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt
+    python scripts/serve.py --port 8000 --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt
 """
 
 from __future__ import annotations
@@ -417,7 +417,7 @@ class AtaraxosUnoServer:
 
 
 class AtaraxosHttpHandler(SimpleHTTPRequestHandler):
-    """HTTP Request Handler serving both static web-ui-serverless assets and JSON API."""
+    """HTTP Request Handler serving both static web assets and JSON API."""
 
     server_backend: AtaraxosUnoServer
 
@@ -466,7 +466,7 @@ class AtaraxosHttpHandler(SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(payload, indent=2).encode("utf-8"))
             return
 
-        # Serve static files from web-ui-serverless
+        # Serve static files from web
         super().do_GET()
 
     def do_POST(self):
@@ -516,7 +516,7 @@ def run_server():
     parser.add_argument("--belief", type=str, default="runs/belief_20m/best.pt", help="Path to belief checkpoint")
     parser.add_argument("--critic", type=str, default=None, help="Path to critic checkpoint")
     parser.add_argument("--search-config", type=str, default="runs/search_config.json", help="Path to search config")
-    parser.add_argument("--static-dir", type=str, default="web-ui-serverless", help="Directory of static web assets")
+    parser.add_argument("--static-dir", type=str, default="web", help="Directory of static web assets")
     args = parser.parse_args()
 
     static_path = Path(args.static_dir).resolve()
