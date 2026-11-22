@@ -1,12 +1,13 @@
 import argparse
 import asyncio
+import base64
 import json
 import subprocess
 import time
 import requests
 import websockets
 
-async def run_e2e(url="http://localhost:8099/"):
+async def run_e2e(url="http://localhost:8099/", screenshot_path=None):
     print("=======================================================")
     print(f"Starting Headless Chrome E2E Test on {url}")
     print("=======================================================")
@@ -29,7 +30,7 @@ async def run_e2e(url="http://localhost:8099/"):
         page_ws = pages[0]["webSocketDebuggerUrl"]
         print(f"Connected to CDP page: {page_ws}")
 
-        async with websockets.connect(page_ws) as ws:
+        async with websockets.connect(page_ws, max_size=None) as ws:
             msg_id = 1
             pending_responses = {}
 
@@ -99,6 +100,12 @@ async def run_e2e(url="http://localhost:8099/"):
             await send_cmd("Console.enable")
             await send_cmd("Runtime.enable")
             await send_cmd("Page.enable")
+            await send_cmd("Emulation.setDeviceMetricsOverride", {
+                "width": 1280,
+                "height": 800,
+                "deviceScaleFactor": 2,
+                "mobile": False,
+            })
             await send_cmd("Page.navigate", {"url": url})
 
             # 1. Wait for "Loading AI..." to finish
@@ -218,6 +225,15 @@ async def run_e2e(url="http://localhost:8099/"):
             p4_val = await evaluate("document.getElementById('xray-p4').textContent")
             print(f"X-Ray Belief Probs -> Red: {r_val}, Green: {g_val}, Blue: {b_val}, Yellow: {y_val}, +2: {p2_val}, +4: {p4_val}")
 
+            if screenshot_path:
+                print(f"Capturing crisp screenshot to {screenshot_path}...")
+                await asyncio.sleep(0.5)
+                res = await send_cmd("Page.captureScreenshot", {"format": "png"})
+                b64_data = res.get("data", "")
+                with open(screenshot_path, "wb") as f:
+                    f.write(base64.b64decode(b64_data))
+                print(f"Screenshot successfully saved to {screenshot_path}")
+
             # 5. Test Play Again flow
             print("\nStep 5: Testing Play Again flow (no reload)...")
             await evaluate("""
@@ -253,5 +269,6 @@ async def run_e2e(url="http://localhost:8099/"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://localhost:8099/", help="URL to test")
+    parser.add_argument("--screenshot", default=None, help="Path to save screenshot")
     args = parser.parse_args()
-    asyncio.run(run_e2e(args.url))
+    asyncio.run(run_e2e(args.url, args.screenshot))
