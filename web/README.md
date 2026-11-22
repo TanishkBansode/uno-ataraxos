@@ -1,48 +1,88 @@
 # Ataraxos-UNO Web Interface
 
-A browser-based UNO interface against **Ataraxos AI**, a neural decision
-and search agent trained via update-equivalence search.
+The `web/` directory contains the browser frontend and client-side inference engine for [**Ataraxos-UNO**](../README.md), a neural decision and search agent for competitive 1v1 UNO.
 
-- **Supported inference backends:**
-  1. **In-Browser ONNX (`WebGPU` / `WASM`):** Runs `ataraxos_actor.onnx` (8.58 MB), `ataraxos_critic.onnx` (8.38 MB), and belief models directly in the browser via ONNX Runtime Web. No tokenizers, external weight downloads, or CPU fallbacks for attention operations.
-  2. **Daemon Path (`scripts/serve.py` `/api/predict_choice`):** Backed by `AtaraxosUnoAgent`, supporting all search modes (`blueprint`, `tier1`, `hybrid`, `static`, `risk_averse`, `online_bayesian`, and `auto` from `runs/search_config.json`) with stateless JSON opponent belief tracking.
-- **WebGPU first:** Prioritizes local GPU execution (Metal on macOS, DirectX on Windows, Vulkan on Linux) for sub-millisecond move latency. An explicit `?api=...` query parameter directs moves to a remote daemon.
-- **Strict neural execution:** Moves are generated exclusively by the neural network or search solver. If inference fails, the game halts with a diagnostic modal rather than falling back to heuristic play.
-- **Belief X-Ray HUD:** Visualizes the AI's estimated probability distribution over your cards (+2, +4, and colors).
+[**▶ Play Live on GitHub Pages**](https://tanishkbansode.github.io/uno-ataraxos/)
 
 ---
 
-## Model Assets
+## 1. Inference Backends: Browser vs. Python Daemon
 
-All models reside directly in `web/model/`:
+The interface supports two execution architectures depending on your setup:
 
-| Asset | Size | Purpose |
-| ----- | ---- | ------- |
-| `ataraxos_actor.onnx` | 8.58 MB | FP32 UnoActorNet policy & WDL value head (WebGPU/WASM) |
-| `ataraxos_critic.onnx` | 8.38 MB | FP32 UnoQCriticNet leaf evaluation (WebGPU/WASM) |
-| `belief_enc.onnx` | 2.62 MB | Optional in-browser UnoBeliefNet encoder |
-| `belief_dec.onnx` | 6.65 MB | Optional in-browser UnoBeliefNet autoregressive decoder |
-
-### Exporting Models
-
-To re-export or verify parity against native PyTorch:
-
-```bash
-python scripts/export_onnx.py
-```
-
-This exports the models with WebGPU-safe explicit attention and runs mandatory `VecUnoEnv` parity tests asserting 100/100 argmax match and max probability difference `< 1e-4` on Actor, and max Q difference `< 1e-4` on Critic.
+| Feature | Client-Side In-Browser (Default) | Python Daemon Path |
+| :--- | :--- | :--- |
+| **Python / C++ Required** | **No** (Zero backend) | **Yes** (Python 3.9+, PyTorch, C++17 extension) |
+| **Inference Engine** | ONNX Runtime Web (WebGPU / WASM) | Native PyTorch + C++ `VecUnoEnv` |
+| **Model Execution** | **Client-side** (User's GPU via WebGPU, or WASM CPU fallback) | **Server-side** (Host CUDA, Apple Silicon MPS, or CPU) |
+| **Search Capabilities** | In-browser 3-style Risk-Averse Portfolio Search (device-budgeted: 192 worlds on WebGPU, 48 on WASM) | Full `AtaraxosUnoAgent` (endgame PDCFR+ solver, online Bayesian style tracker, all ablation modes) |
+| **Static Hosting** | **Supported** (GitHub Pages, Cloudflare Pages, `npx serve`) | Requires a running Python host process |
+| **Network Requests** | **None during gameplay** (Models download once and cache locally in IndexedDB) | HTTP `POST /api/predict_choice` per bot turn |
 
 ---
 
-## Running Locally
+## 2. Running the Web Interface
 
-From the repository root:
+### Path A: Browser-Only Local Server (Zero Setup)
+No PyTorch checkpoints or C++ compilers needed. Any static HTTP server will serve the client-side ONNX app:
 
 ```bash
-python scripts/serve.py --port 8000 --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt
+# Using Node.js
+npx serve web
+
+# Or using Python's built-in static server
+python3 -m http.server 8000 --directory web
+```
+Open <http://localhost:8000>. The bundled ONNX models (`web/model/*.onnx`) load directly into your browser's WebGPU/WASM engine.
+
+---
+
+### Path B: Local Python Daemon (Full PyTorch Agent)
+If you want to run the full server-side PyTorch agent with deep search and custom checkpoint paths:
+
+```bash
+# 1. Build C++17 extension and install package
+pip install -e .
+
+# 2. Launch server (serves web/ and provides /api/predict_choice)
+python scripts/serve.py \
+  --port 8000 \
+  --blueprint runs/blueprint_100m/latest.pt \
+  --belief runs/belief_20m/best.pt
 ```
 
-Open <http://localhost:8000>. The server hosts both the static frontend and the `/api/predict_choice` endpoint.
+Open <http://localhost:8000>. The web interface automatically detects the local `/api/health` endpoint and routes bot decisions to the Python daemon.
 
-To run purely serverless without any Python backend, serve `web/` with any static web server (e.g. `npx serve web` or GitHub Pages / Cloudflare Pages).
+---
+
+## 3. Bundled Model Assets
+
+All web models are stored in `web/model/` and tracked in the repository:
+
+| Model Asset | File Size | Architecture & Role |
+| :--- | :--- | :--- |
+| `ataraxos_actor.onnx` | 8.58 MB | FP32 `UnoActorNet` policy (61 actions) & WDL value head |
+| `ataraxos_critic.onnx` | 8.38 MB | FP32 `UnoQCriticNet` state-action leaf evaluator |
+| `belief_enc.onnx` | 2.62 MB | Board & history context encoder for belief generation |
+| `belief_dec.onnx` | 6.65 MB | Autoregressive descending multiset decoder |
+
+### Re-Exporting Models & Parity Verification
+To re-export ONNX assets from PyTorch checkpoints and run bit-for-bit parity tests:
+
+```bash
+python scripts/export_onnx.py \
+  --blueprint runs/blueprint_100m/latest.pt \
+  --belief runs/belief_20m/best.pt \
+  --output-dir web/model
+```
+This script validates:
+- 100/100 argmax action parity between PyTorch and ONNX Runtime.
+- Max absolute difference $< 10^{-4}$ on output probability and Q-value tensors.
+
+---
+
+## 4. Browser Compatibility & Performance
+
+- **WebGPU (Preferred):** Provides sub-millisecond tensor operations on Chrome, Edge, and Safari (macOS 14+ / iOS 17+). Runs on Metal, DirectX 12, or Vulkan.
+- **WebAssembly (WASM Fallback):** Automatically activates if WebGPU is unavailable or disabled. Multi-threaded WASM utilizes SIMD instructions for CPU evaluation.
+- **Cross-Origin Isolation:** The web server sends `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers to enable high-precision timers and `SharedArrayBuffer` threading.

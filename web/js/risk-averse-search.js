@@ -1,4 +1,4 @@
-// Browser-Native Ataraxos Milestone 8 Risk-Averse Portfolio Search Engine
+// Client-Side In-Browser Ataraxos Risk-Averse Portfolio Search Engine
 // Implements exact Update-Equivalence Tabular MMD Search with:
 // 1. 3-Style Opponent Portfolio: Blueprint (0.45), Aggressive No-VDraw (0.35), Noisy (0.20)
 // 2. Soft-Minimax Risk-Averse Aggregation with gamma = 4.0

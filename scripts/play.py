@@ -63,6 +63,16 @@ def main():
     print("      ATARAXOS 1v1 UNO - TEST-TIME SEARCH & BELIEF X-RAY")
     print(f"{'='*60}{COLORS['reset']}")
     print(f"Device: {device} | Mode: {args.mode.upper()} | Portfolio: {args.portfolio} | Adaptive Bayes: {args.adaptive}")
+
+    if not Path(args.blueprint).is_file():
+        print(f"\n{COLORS['r']}[Error] PyTorch checkpoint not found at '{args.blueprint}'.{COLORS['reset']}")
+        print("Fresh git clones do not include raw .pt weights (excluded by .gitignore).")
+        print("\nOptions to play:")
+        print("1. In-Browser Web UI (Zero setup): open https://tanishkbansode.github.io/uno-ataraxos/")
+        print("2. Local Web UI (bundled ONNX models): run `python3 -m http.server 8000 --directory web`")
+        print("3. Train your own weights: see docs/TRAINING.md")
+        sys.exit(1)
+
     print(f"Loading AI agent...")
 
     agent = AtaraxosUnoAgent(

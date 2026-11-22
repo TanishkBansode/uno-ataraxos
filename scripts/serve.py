@@ -73,17 +73,23 @@ class AtaraxosUnoServer:
                 print(f"[Warning] Could not load search config from {cfg_file}: {e}")
 
         # Initialize Agent with hybrid capabilities
-        print(f"Loading AtaraxosUnoAgent on device {self.device}...")
-        self.agent = AtaraxosUnoAgent(
-            blueprint_ckpt=blueprint_ckpt,
-            belief_ckpt=belief_ckpt,
-            critic_ckpt=critic_ckpt,
-            mode="hybrid",
-            device=self.device,
-            search_config_path=search_config_path,
-            warmup=True,
-        )
-        print("AtaraxosUnoAgent initialized successfully!")
+        if not os.path.isfile(self.blueprint_ckpt):
+            print(f"[Notice] PyTorch blueprint checkpoint not found at '{self.blueprint_ckpt}'.")
+            print("         Serving static web assets from `web/` (browser will run bundled ONNX models).")
+            print("         To enable the server-side Python daemon, download/train checkpoints via docs/TRAINING.md.")
+            self.agent = None
+        else:
+            print(f"Loading AtaraxosUnoAgent on device {self.device}...")
+            self.agent = AtaraxosUnoAgent(
+                blueprint_ckpt=blueprint_ckpt,
+                belief_ckpt=belief_ckpt,
+                critic_ckpt=critic_ckpt,
+                mode="hybrid",
+                device=self.device,
+                search_config_path=search_config_path,
+                warmup=True,
+            )
+            print("AtaraxosUnoAgent initialized successfully!")
 
     def resolve_mode_config(self, requested_mode: str) -> Dict[str, Any]:
         """Resolve requested mode string to full parameter dict with ZERO parameter bleed."""
@@ -199,6 +205,12 @@ class AtaraxosUnoServer:
         opp_posterior: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Stateless decision endpoint supporting all verified Milestone 8 modes."""
+        if self.agent is None:
+            raise RuntimeError(
+                "PyTorch checkpoint not found on server. "
+                "The browser UI is running via the bundled client-side ONNX engine. "
+                "To enable server-side Python inference, see docs/TRAINING.md."
+            )
         t0 = time.perf_counter()
         cfg = self.resolve_mode_config(mode)
 
@@ -442,27 +454,35 @@ class AtaraxosHttpHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            champ_cfg = self.server_backend.resolve_mode_config("auto")
-            payload = {
-                "status": "ok",
-                "agent": "ataraxos-uno",
-                "device": str(self.server_backend.device),
-                "blueprint_ckpt": self.server_backend.blueprint_ckpt,
-                "belief_ckpt": self.server_backend.belief_ckpt,
-                "winner_name": self.server_backend.search_cfg.get("winner_name", "Ablation B (Static Risk-Averse)"),
-                "champion_score": self.server_backend.search_cfg.get("score_3axis", 58.33),
-                "search_config": self.server_backend.search_cfg,
-                "champion_config": champ_cfg,
-                "modes_supported": [
-                    "auto",
-                    "blueprint",
-                    "online_bayesian",
-                    "hybrid",
-                    "risk_averse",
-                    "static",
-                    "tier1",
-                ],
-            }
+            if self.server_backend.agent is None:
+                payload = {
+                    "status": "ok",
+                    "agent_loaded": False,
+                    "message": "Serving static web assets. Client using bundled in-browser ONNX engine.",
+                }
+            else:
+                champ_cfg = self.server_backend.resolve_mode_config("auto")
+                payload = {
+                    "status": "ok",
+                    "agent_loaded": True,
+                    "agent": "ataraxos-uno",
+                    "device": str(self.server_backend.device),
+                    "blueprint_ckpt": self.server_backend.blueprint_ckpt,
+                    "belief_ckpt": self.server_backend.belief_ckpt,
+                    "winner_name": self.server_backend.search_cfg.get("winner_name", "Ablation B (Static Risk-Averse)"),
+                    "champion_score": self.server_backend.search_cfg.get("score_3axis", 58.33),
+                    "search_config": self.server_backend.search_cfg,
+                    "champion_config": champ_cfg,
+                    "modes_supported": [
+                        "auto",
+                        "blueprint",
+                        "online_bayesian",
+                        "hybrid",
+                        "risk_averse",
+                        "static",
+                        "tier1",
+                    ],
+                }
             self.wfile.write(json.dumps(payload, indent=2).encode("utf-8"))
             return
 

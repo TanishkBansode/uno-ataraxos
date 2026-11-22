@@ -173,7 +173,7 @@ export class AtaraxosModelClient {
       }
     }
 
-    // 2. Browser-Native In-Browser Inference (Risk-Averse Search or Blueprint)
+    // 2. Client-Side In-Browser Inference (Risk-Averse Search or Blueprint)
     if (!choice) {
       try {
         const browserEngine = await this._ensureInBrowserEngine();
