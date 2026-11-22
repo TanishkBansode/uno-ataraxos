@@ -38,7 +38,7 @@ $$\Gamma = \langle \mathcal{N}, \mathcal{S}, (\mathcal{A}_i)_{i \in \mathcal{N}}
 │  3. Hard-Masked Autoregressive Belief Network (20M Positions)            │
 │     • Canonical descending multiset decoder with zero-dead-end masking   │
 │     • 15% history dropout + diverse opponents for human robustness       │
-│     • +1.47 nats/hand gain (4.35× sharper than exact Hypergeom prior)    │
+│     • +1.19 nats/hand gain (3.29× sharper than exact Hypergeom prior)    │
 └────────────────────────────────────┬─────────────────────────────────────┘
                                      ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -115,6 +115,8 @@ All head-to-head evaluations use **mirrored duplicate decks** (each shuffled 108
 | `GreedyBot` | **72.3%** | 250 decks (500 games) | Never voluntarily draws, sheds highest card |
 | `ExpertHeuristicBot` | **64.5%** | 250 decks (500 games) | Hand-crafted Skip/Reverse chainer & stack counter |
 
+*(Note: Blueprint achieves 64.5% win rate over 500 games with diverse random seeds, and 61.0% [122–78] on the fixed 200-game ablation deck benchmark in §6.3.)*
+
 ### 5.2 Emergent Wild-Hoarding Discovery
 A 15,850-turn diagnostic of the 100M Blueprint revealed emergent high-level strategy without any handcrafted rewards:
 - **Voluntary Draw Rate:** The policy chooses to draw while holding legal cards **12.45%** of the time.
@@ -139,16 +141,16 @@ We introduced a three-style rollout portfolio combined with entropic soft-minima
 3. **20% Unpredictable Style:** High-temperature stochastic exploration.
 
 ### 6.3 2,400-Game Controlled Ablation Matrix
-Tested across **2,400 mirrored duplicate games** (exactly 200 games per cell on identical deck seeds):
+Evaluated across **2,400 total mirrored duplicate games** (4 agent configurations × 600 games/agent; exactly 200 games / 100 duplicate pairs per opponent cell on identical deck seeds):
 
-| Agent Configuration | vs 100M Blueprint (200g) | vs ExpertBot (200g) | vs 15M Exploiter (200g) | **3-Axis Avg** |
+| Agent Configuration | vs 100M Blueprint (200g) | vs ExpertBot (200g) | vs 15M Exploiter (200g) | **3-Axis Avg (600g)** |
 | :--- | :---: | :---: | :---: | :---: |
 | Pure 100M Blueprint (Baseline) | 50.0% *(100–100)* | 61.0% *(122–78)* | 55.0% *(110–90)* | 55.3% |
 | **Risk-Averse Portfolio (Champion)** ⭐ | **53.0%** *(106–94)* | **66.0%** *(132–68)* | **56.0%** *(112–88)* | **58.3% (+3.0%)** |
 | Adaptive Bayesian (Tier-1) | **53.0%** *(106–94)* | 65.5% *(131–69)* | 55.0% *(110–90)* | 57.8% (+2.5%) |
 | Adaptive Bayesian Hybrid (+ PDCFR+) | 50.0% *(100–100)* | 64.5% *(129–71)* | **57.0%** *(114–86)* | 57.2% (+1.9%) |
 
-The Risk-Averse Portfolio achieves the highest overall win rate (**58.3%**), simultaneously beating the self-play Blueprint (**53.0%**) and crushing the Expert bot (**66.0%**), proving that portfolio rollouts eliminate search fragility.
+The Risk-Averse Portfolio achieves the highest overall win rate (**58.3%** across 600 duplicate games), simultaneously beating the self-play Blueprint (**53.0%**) and the Expert bot (**66.0%**), proving that portfolio rollouts eliminate search fragility.
 
 ---
 
@@ -166,7 +168,7 @@ The Risk-Averse Portfolio achieves the highest overall win rate (**58.3%**), sim
 
 ## 8. Academic References & Foundations
 
-- **Ataraxos:** Sokota et al. (*Nature*, 2026). *Solving Imperfect Information Games via Update-Equivalence Search and Regularized Equilibrium Play.*
-- **VRPO:** Fan & Farina (*MIT*, 2026). *Variance-Reduced Policy Optimization for Imperfect-Information Games with Non-Alternating Steps.*
-- **EMAgnet:** Maidment et al. (2026). *Parameter-Space Magnet Regularization for Last-Iterate Convergence in Zero-Sum Games.*
-- **PDCFR+:** Xu et al. (*AAAI*, 2026). *Predictive Discounted Counterfactual Regret Minimization for Endgame Subgame Solving.*
+- **Ataraxos:** Samuel Sokota, Eugene Vinitsky, Hengyuan Hu, Zhiyuan Fan, J. Zico Kolter, and Gabriele Farina (2026). *Scalable decision-making for games of imperfect information.* **Nature**, 658(8134), 55–59. [DOI](https://doi.org/10.1038/s41586-026-11036-y) · [arXiv:2511.07312](https://arxiv.org/abs/2511.07312)
+- **VRPO:** Zhiyuan Fan and Gabriele Farina (2026). *GAE Falls Short in Imperfect-Information Self-Play Reinforcement Learning.* [arXiv:2605.19235](https://arxiv.org/abs/2605.19235)
+- **EMAgnet:** Tristan Maidment, JB Lanier, Chase McDonald, Nathan Tsang, Eugene Vinitsky, Roy Fox, Albert Wang, and Wesley N. Kerr (2026). *EMAgnet: Parameter-Space EMA Regularization for Policy Gradient Self-Play in Large Games.* NExT-Game 2026 (ICML 2026 Workshop). [arXiv:2606.23995](https://arxiv.org/abs/2606.23995)
+- **Deep PDCFR+:** Hang Xu, Kai Li, Haobo Fu, Qiang Fu, Junliang Xing, and Jian Cheng (2026). *Deep (Predictive) Discounted Counterfactual Regret Minimization.* **Proceedings of the AAAI Conference on Artificial Intelligence (AAAI-26)**, 40(20), 17284–17292. [DOI](https://doi.org/10.1609/aaai.v40i20.38780) · [arXiv:2511.08174](https://arxiv.org/abs/2511.08174)

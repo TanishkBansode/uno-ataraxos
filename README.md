@@ -28,6 +28,9 @@ The agent pairs a 100M-step self-play blueprint with an autoregressive belief ne
 
 Unlike standard web demos that only execute passive neural forward passes, Ataraxos-UNO runs the **entire test-time search loop**—including exact reshuffle provenance tracking, belief world sampling, and 192 parallel rollouts—**100% client-side in the browser** with bit-for-bit parity against the C++ training engine, requiring zero backend servers or external API dependencies.
 
+- **Compute Efficiency:** The full 100M-step self-play blueprint (~2.45M complete games) trains in **~3.5 hours on a single CUDA GPU** or **~5 hours on Apple Silicon MPS**, powered by the 7.8M SPS C++ vectorized simulator (`VecUnoEnv`).
+- **Solving Rollout Overfitting:** Naive single-policy search assumed opponents would hoard Wilds and respect stack counters like the equilibrium blueprint, making it fragile against aggressive heuristic play. Ataraxos-UNO solves this via a **3-style opponent portfolio rollout** (Blueprint, Aggressive, Unpredictable) with entropic soft-minimax aggregation ($\gamma = 4.0$), turning a net loss into a **+5.0% boost against Expert heuristics** ([ablation details →](docs/RESEARCH.md#6-solving-rollout-overfitting-2400-game-controlled-ablation)).
+
 ---
 
 ## Motivation: From Stratego to UNO
@@ -57,7 +60,7 @@ Evaluated using **mirrored duplicate decks** (each shuffled 108-card deck is pla
 | Matchup | 100M Blueprint | + Portfolio Search | Evaluation Setup |
 | :--- | :---: | :---: | :--- |
 | **vs. Expert Heuristic** | 61.0% | **66.0% (132–68)** | 100 duplicate decks (200 games) |
-| **3-Opponent Suite Avg.** | 55.3% | **58.3% (+3.0%)** | 2,400 duplicate games vs. Blueprint, Expert, and Exploiter |
+| **3-Opponent Suite Avg.** | 55.3% | **58.3% (+3.0%)** | 600 duplicate games (200 each vs. Blueprint, Expert, Exploiter; 2,400 across ablation suite) |
 
 - **Baseline (`ExpertHeuristicBot`):** Hand-crafted tournament heuristic that counters `+2`/`+4` stacks into its most abundant color, chains Skips/Reverses for tempo, saves Wilds as finishers, and drops penalties when the opponent has ≤ 3 cards.
 - **Emergent Strategy:** Without reward shaping, the self-play policy independently learned to draw voluntarily **12.45%** of the time—with **93.9%** of those draws hoarding Wilds or stack counters for the endgame.
@@ -122,7 +125,7 @@ python scripts/serve.py
 python scripts/play.py --blueprint runs/blueprint_100m/latest.pt --belief runs/belief_20m/best.pt --xray
 ```
 
-> **Note on Checkpoints:** Fresh git clones do not include raw PyTorch checkpoints (`*.pt`), which are excluded by `.gitignore`. `scripts/serve.py` automatically serves the static web UI with the bundled ONNX models out of the box. To train your own checkpoints from scratch, see [**`docs/TRAINING.md`**](docs/TRAINING.md).
+> **Note on Checkpoints:** Fresh git clones do not include raw PyTorch checkpoints (`*.pt`), which are excluded by `.gitignore`. `scripts/serve.py` automatically serves the static web UI with the bundled ONNX models out of the box. To download pre-trained PyTorch checkpoints for terminal play and training pipelines, run `python scripts/download_checkpoints.py` or download from [**GitHub Releases (v1.0.0)**](https://github.com/TanishkBansode/uno-ataraxos/releases/tag/v1.0.0). To train your own checkpoints from scratch, see [**`docs/TRAINING.md`**](docs/TRAINING.md).
 
 ---
 
@@ -139,7 +142,7 @@ node tests/test_fast_rollout_parity.mjs    # 4,000-step JS vs C++ rollout parity
 
 - **[`docs/RESEARCH.md`](docs/RESEARCH.md)**: Technical whitepaper detailing the 4-stage neural architecture, VRPO Expected SARSA(λ), EMAgnet regularization, the 2,400-game ablation matrix, and academic citations.
 - **[`docs/TRAINING.md`](docs/TRAINING.md)**: Hardware matrix (NVIDIA CUDA, Apple Silicon MPS, CPU) and end-to-end training instructions for Blueprint, Belief Net, and Neural Exploiter.
-- **[`docs/RULES.md`](docs/RULES.md)**: Official 108-card 1v1 UNO tournament rules specification.
+- **[`docs/RULES.md`](docs/RULES.md)**: 108-card 1v1 competitive UNO rules specification (with same-type draw stacking).
 - **[`web/README.md`](web/README.md)**: Frontend architecture guide detailing client-side in-browser vs. Python daemon execution, ONNX exports, and WebGPU configuration.
 
 ---

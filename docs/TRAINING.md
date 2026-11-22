@@ -6,6 +6,11 @@
 
 ## 1. Quickstart
 
+To download pre-trained checkpoints (100M Blueprint, 20M Belief Net, and 20M Exploiter):
+```bash
+python scripts/download_checkpoints.py
+```
+
 To launch self-play training with automatic hardware detection and mixed precision:
 ```bash
 python scripts/train.py
@@ -65,6 +70,7 @@ python -m uno_ataraxos.train_exploiter \
   --eval-decks 250 \
   --run-dir runs/exploiter_20m
 ```
+*(Note: The checkpoint directory is named `runs/exploiter_20m` for historical consistency, with training terminating at 15M steps where the exploiter reached empirical convergence.)*
 
 ### Stage D: Search Hyperparameter Sweep & Defense Verification
 Runs mirrored duplicate tournaments against the frozen Blueprint to find the Pareto-optimal MMD parameters ($\eta, \tau, \text{leaf\_eval}$), saves `search_config.json`, and verifies search defends against the exploiter:
@@ -112,8 +118,8 @@ python -m uno_ataraxos.train_blueprint \
 
 - **Rollout Throughput:** 512 parallel environments stepping at > 5,000,000 SPS in C++.
 - **Training Throughput:**
-  - Modern CUDA GPUs: > 8,000 samples/sec (< 125 ms/step) $\to$ 100M steps in ~3.5 hours.
-  - Apple Silicon (MPS): > 5,300 samples/sec (< 190 ms/step) $\to$ 100M steps in ~5 hours.
+  - Modern CUDA GPUs: > 8,000 samples/sec (< 125 ms/minibatch update) $\to$ 100M steps in ~3.5 hours.
+  - Apple Silicon (MPS): > 5,300 samples/sec (< 190 ms/minibatch update) $\to$ 100M steps in ~5 hours.
 - **Milestones:**
   - **Stage 1 (0M – 30M steps):** Uniform Legal Policy Magnet ($\alpha_{\text{mag}}: 0.10 \to 0.015$). Voluntary draw rate drops to < 1%.
-  - **Stage 2 (30M – 100M steps):** EMAgnet ($\alpha_{\text{mag}}: 0.04 \to 0.01$) + Dual-Anchor Uniform Floor ($\alpha_{\text{unif\_floor}}: 0.006 \to 0.002$). Wins vs `ExpertHeuristicBot` exceed > 65%.
+  - **Stage 2 (30M – 100M steps):** EMAgnet ($\alpha_{\text{mag}}: 0.04 \to 0.01$) + Dual-Anchor Uniform Floor ($\alpha_{\text{unif\_floor}}: 0.006 \to 0.002$). Duplicate win rate vs `ExpertHeuristicBot` stabilizes between 61.0%–64.5% (peaking at 73.2% in greedy checkpoint evaluation).
