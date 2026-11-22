@@ -249,22 +249,6 @@ export class AtaraxosModelClient {
       latencyMs: elapsedMs,
     };
   }
-
-    const elapsedMs = performance.now() - startTime;
-    this.telemetry.lastLatencyMs = elapsedMs;
-
-    return {
-      action: choice,
-      action_key: choice,
-      probabilities: probs,
-      win_prob: winProb,
-      mode_used: modeUsed,
-      technique_label: techniqueLabel,
-      engine_backend: engineBackend,
-      belief_xray: beliefXray,
-      latencyMs: elapsedMs,
-    };
-  }
 }
 
 // Backward-compatible alias
