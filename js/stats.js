@@ -184,13 +184,13 @@ export function trackEvent(path, title = "") {
 function formatBackendLabel(backend) {
   switch (backend) {
     case "browser_webgpu":
-      return "In-Browser WebGPU";
+      return "WebGPU";
     case "browser_wasm":
-      return "In-Browser WASM";
+      return "WASM";
     case "server":
       return "Python Daemon";
     default:
-      return "Waiting for move";
+      return "—";
   }
 }
 
@@ -223,8 +223,10 @@ export function initStatsDialog({ onReset } = {}) {
     setText("stat-wins", String(s.humanWins));
     setText("stat-losses", String(s.botWins));
     setText("stat-winrate", `${s.winRate}%`);
-    setText("stat-streak", `${s.currentStreak} (Best ${s.bestStreak})`);
-    setText("stat-avg-turns", s.avgTurns);
+    setText(
+      "stat-streak",
+      s.bestStreak > 0 ? `${s.currentStreak} / ${s.bestStreak}` : String(s.currentStreak),
+    );
     setText(
       "stat-fastest-win",
       s.fastestWinTurns !== null ? `${s.fastestWinTurns} turns` : "—",
@@ -236,10 +238,6 @@ export function initStatsDialog({ onReset } = {}) {
       "stat-avg-latency",
       s.avgLatencyMs !== null ? `${s.avgLatencyMs} ms` : "—",
     );
-    setText(
-      "stat-last-latency",
-      s.lastAiLatencyMs !== null ? `${Math.round(s.lastAiLatencyMs)} ms` : "—",
-    );
 
     const recentList = document.getElementById("stats-recent-list");
     if (recentList) {
@@ -247,7 +245,7 @@ export function initStatsDialog({ onReset } = {}) {
       if (s.recentMatches.length === 0) {
         const li = document.createElement("li");
         li.className = "stats-empty";
-        li.textContent = "No completed matches yet — play a round to record stats.";
+        li.textContent = "No completed matches yet.";
         recentList.appendChild(li);
       } else {
         for (const m of s.recentMatches) {
@@ -279,26 +277,6 @@ export function initStatsDialog({ onReset } = {}) {
         }
       }
     }
-
-    const analyticsInfo = document.getElementById("stats-analytics-status");
-    if (analyticsInfo) {
-      const dashUrl = getGoatCounterDashboardUrl();
-      analyticsInfo.innerHTML = "";
-      if (dashUrl) {
-        const label = document.createElement("span");
-        label.textContent = "Site visitor analytics: Active ";
-        const link = document.createElement("a");
-        link.href = dashUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = "(Open GoatCounter Dashboard)";
-        analyticsInfo.appendChild(label);
-        analyticsInfo.appendChild(link);
-      } else {
-        analyticsInfo.textContent =
-          'Visitor analytics: Set your GoatCounter site code in <meta name="goatcounter-code"> inside web/index.html.';
-      }
-    }
   }
 
   function clearResetConfirm() {
@@ -308,7 +286,7 @@ export function initStatsDialog({ onReset } = {}) {
       confirmTimer = null;
     }
     if (resetBtn) {
-      resetBtn.textContent = "Reset Stats";
+      resetBtn.textContent = "Reset";
       resetBtn.classList.remove("confirming");
     }
   }
@@ -321,7 +299,7 @@ export function initStatsDialog({ onReset } = {}) {
     resetBtn.addEventListener("click", () => {
       if (!confirmingReset) {
         confirmingReset = true;
-        resetBtn.textContent = "Click again to confirm";
+        resetBtn.textContent = "Confirm Reset";
         resetBtn.classList.add("confirming");
         confirmTimer = setTimeout(clearResetConfirm, 3500);
         return;

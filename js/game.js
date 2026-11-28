@@ -114,21 +114,20 @@ function setXrayOpen(open) {
     trackEvent("xray-open", "Opened Belief X-Ray");
     if (modelClient.isInBrowserLoaded && !modelClient.inBrowserEngine.beliefLoaded) {
       if (xrayFooterNote) {
-        xrayFooterNote.textContent = "Loading neural belief model...";
+        xrayFooterNote.textContent = "Loading belief model...";
+        xrayFooterNote.classList.remove("hidden");
       }
       modelClient
         .initInBrowserBelief()
         .then(() => {
-          if (xrayFooterNote) {
-            xrayFooterNote.textContent = "Neural Belief Net active — updates after AI's turn";
-          }
+          if (xrayFooterNote) xrayFooterNote.classList.add("hidden");
         })
         .catch((err) => {
           console.warn("[Ataraxos] Belief init error:", err);
-          if (xrayFooterNote) {
-            xrayFooterNote.textContent = "Updates after AI's turn";
-          }
+          if (xrayFooterNote) xrayFooterNote.classList.add("hidden");
         });
+    } else if (xrayFooterNote) {
+      xrayFooterNote.classList.add("hidden");
     }
   }
 }
@@ -288,6 +287,7 @@ modelClient.setEndpointUrl(CONFIG.DEFAULT_API_URL);
 preloadAssets();
 
 const aiStatusText = document.getElementById("ai-status-text");
+const aiStatusDot = document.getElementById("ai-status-dot");
 const aiProgressBarContainer = document.getElementById(
   "ai-progress-bar-container",
 );
@@ -296,13 +296,27 @@ const aiProgressBar = document.getElementById("ai-progress-bar");
 let useInBrowser = false;
 let inBrowserInitPromise = null;
 
+function formatDeviceName(dev) {
+  if (dev === "webgpu") return "WebGPU";
+  if (dev === "wasm") return "WASM";
+  return "Server";
+}
+
+function setAiStatus(text, state = "loading") {
+  if (aiStatusText) {
+    aiStatusText.textContent = text;
+    aiStatusText.classList.toggle("error", state === "error");
+  }
+  if (aiStatusDot) {
+    aiStatusDot.classList.toggle("ready", state === "ready");
+    aiStatusDot.classList.toggle("error", state === "error");
+  }
+}
+
 function startInBrowserInit() {
   if (modelClient.isInBrowserLoaded) {
-    if (aiStatusText) {
-      const dev = (modelClient.inBrowserDevice || "wasm").toUpperCase();
-      aiStatusText.classList.remove("error");
-      aiStatusText.textContent = `AI Ready (${dev})`;
-    }
+    const dev = formatDeviceName(modelClient.inBrowserDevice || "wasm");
+    setAiStatus(`Ready · ${dev}`, "ready");
     if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
     if (aiRetryBtn) aiRetryBtn.classList.add("hidden");
     return Promise.resolve();
@@ -310,37 +324,25 @@ function startInBrowserInit() {
 
   if (inBrowserInitPromise) return inBrowserInitPromise;
 
-  if (aiStatusText) {
-    aiStatusText.classList.remove("error");
-    aiStatusText.textContent = "Loading AI...";
-  }
+  setAiStatus("Loading AI...", "loading");
   if (aiRetryBtn) aiRetryBtn.classList.add("hidden");
 
   inBrowserInitPromise = modelClient
     .initInBrowser((pct, msg) => {
-      if (aiStatusText) {
-        aiStatusText.classList.remove("error");
-        aiStatusText.textContent = msg || `Loading AI (${pct}%)...`;
-      }
+      setAiStatus(msg || `Loading AI (${pct}%)...`, "loading");
       if (aiProgressBarContainer) aiProgressBarContainer.style.display = "block";
       if (aiProgressBar) aiProgressBar.style.width = `${pct}%`;
     })
     .then(() => {
-      const dev = (modelClient.inBrowserDevice || "wasm").toUpperCase();
-      if (aiStatusText) {
-        aiStatusText.classList.remove("error");
-        aiStatusText.textContent = `AI Ready (${dev})`;
-      }
+      const dev = formatDeviceName(modelClient.inBrowserDevice || "wasm");
+      setAiStatus(`Ready · ${dev}`, "ready");
       if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
       if (aiRetryBtn) aiRetryBtn.classList.add("hidden");
     })
     .catch((err) => {
       console.warn("[ataraxos-uno] In-browser init failed:", err);
       inBrowserInitPromise = null;
-      if (aiStatusText) {
-        aiStatusText.classList.add("error");
-        aiStatusText.textContent = `AI failed to load: ${err.message || "Network error"}`;
-      }
+      setAiStatus(`Failed to load AI: ${err.message || "Network error"}`, "error");
       if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
       if (aiRetryBtn) aiRetryBtn.classList.remove("hidden");
       throw err;
@@ -356,10 +358,7 @@ const backendReady = (async () => {
     useInBrowser = false;
     modelClient.setPreferInBrowser(false);
     modelClient.setMode("auto");
-    if (aiStatusText) {
-      aiStatusText.classList.remove("error");
-      aiStatusText.textContent = "AI Ready (Server)";
-    }
+    setAiStatus("Ready · Server", "ready");
     if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
   } else {
     useInBrowser = true;
@@ -390,12 +389,12 @@ async function handleLoginSubmit() {
     }
   } catch (initErr) {
     console.error("[ataraxos-uno] In-browser init failed on play click:", initErr);
-    connectBtn.textContent = "Play!";
+    connectBtn.textContent = "Play";
     connectBtn.disabled = false;
     return;
   }
 
-  connectBtn.textContent = "Play!";
+  connectBtn.textContent = "Play";
   connectBtn.disabled = false;
 
   trackEvent("play-clicked", "Entered Game Lobby");
@@ -424,7 +423,7 @@ function setupLobby() {
   renderPlayerBadge(humanPlayerId, humanUsername, humanAvatarUrl, 0);
   renderPlayerBadge(
     botPlayerId,
-    "ATARAXOS AI",
+    "Ataraxos AI",
     "resources/defaultAvatar.png",
     0,
   );
@@ -463,41 +462,41 @@ function renderPlayerBadge(pid, name, avatar, count) {
     div.className = "player";
     div.id = pid;
 
-    const uLabel = document.createElement("label");
-    uLabel.className = "username";
-    uLabel.id = `username_${pid}`;
-    uLabel.innerText = name;
-
     const aImg = document.createElement("img");
     aImg.className = "avatar";
     aImg.id = `avatar_${pid}`;
     aImg.src = avatar;
     aImg.alt = "";
-    aImg.width = 64;
-    aImg.height = 64;
+    aImg.width = 28;
+    aImg.height = 28;
     aImg.draggable = false;
+
+    const uLabel = document.createElement("span");
+    uLabel.className = "username";
+    uLabel.id = `username_${pid}`;
+    uLabel.textContent = name;
+
+    const cLabel = document.createElement("span");
+    cLabel.className = "count";
+    cLabel.id = `count_${pid}`;
+    cLabel.textContent = count;
 
     const oImg = document.createElement("img");
     oImg.className = "overlay";
     oImg.id = `overlay_${pid}`;
     oImg.alt = "";
-    oImg.width = 64;
-    oImg.height = 64;
+    oImg.width = 32;
+    oImg.height = 32;
     oImg.draggable = false;
 
-    const cLabel = document.createElement("label");
-    cLabel.className = "count";
-    cLabel.id = `count_${pid}`;
-    cLabel.innerText = count;
-
-    div.appendChild(uLabel);
     div.appendChild(aImg);
-    div.appendChild(oImg);
+    div.appendChild(uLabel);
     div.appendChild(cLabel);
+    div.appendChild(oImg);
     playersContainer.appendChild(div);
   } else {
     const cLabel = document.getElementById(`count_${pid}`);
-    if (cLabel) cLabel.innerText = count;
+    if (cLabel) cLabel.textContent = count;
   }
 }
 
@@ -689,9 +688,14 @@ function clearUnoOverlays() {
 
 function updateActivePlayerHighlight(activePlayerId) {
   document
+    .querySelectorAll(".player.active-turn")
+    .forEach((el) => el.classList.remove("active-turn"));
+  document
     .querySelectorAll(".glow")
     .forEach((el) => el.classList.remove("glow"));
   if (!activePlayerId) return;
+  const activePlayer = document.getElementById(activePlayerId);
+  if (activePlayer) activePlayer.classList.add("active-turn");
   const activeLabel = document.getElementById(`username_${activePlayerId}`);
   if (activeLabel) activeLabel.classList.add("glow");
 }
@@ -1497,18 +1501,18 @@ function handleGameOver(data) {
     winnerWrapper.classList.add("ScaleUp");
 
     if (data.winner === humanPlayerId) {
-      winnerUsername.textContent = `${humanUsername} WINS!`;
+      winnerUsername.textContent = `${humanUsername} Wins`;
       winnerAvatar.src = humanAvatarUrl;
     } else if (data.winner === botPlayerId) {
-      winnerUsername.textContent = "ATARAXOS AI WINS!";
+      winnerUsername.textContent = "Ataraxos AI Wins";
       winnerAvatar.src = "resources/defaultAvatar.png";
     } else {
-      winnerUsername.textContent = "DRAW";
+      winnerUsername.textContent = "Draw";
       winnerAvatar.src = "resources/defaultAvatar.png";
     }
 
     if (winnerSummary) {
-      winnerSummary.textContent = `Finished in ${engine.turnCount} turns • Record: ${summary.humanWins}W – ${summary.botWins}L (${summary.winRate}%)`;
+      winnerSummary.textContent = `${engine.turnCount} turns · ${summary.humanWins}W–${summary.botWins}L (${summary.winRate}%)`;
     }
     if (winnerReturnBtn) winnerReturnBtn.focus();
   }, motionDuration(500));
