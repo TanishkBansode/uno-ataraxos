@@ -53,7 +53,7 @@
         <form id="login-form" novalidate>
           <div class="login-brand">
             <h1 class="login-title">Ataraxos-UNO</h1>
-            <p class="login-subtitle">1v1 Neural RL &amp; Risk-Averse Search AI</p>
+            <p class="login-subtitle">1v1 UNO AI</p>
           </div>
 
           <label class="visually-hidden" for="username">Player Name</label>
@@ -61,22 +61,25 @@
             class="input form-control"
             id="username"
             name="Username"
-            placeholder="Username"
+            placeholder="Your name"
             type="text"
             value="Player"
             maxlength="24"
             autocomplete="nickname"
             autofocus
           />
-          <button type="submit" id="connect">Play!</button>
+          <button type="submit" id="connect">Play</button>
 
           <div id="ai-loading-status" aria-live="polite">
-            <div id="ai-status-text">Loading AI...</div>
+            <div class="ai-status-row">
+              <span id="ai-status-dot" class="status-dot"></span>
+              <span id="ai-status-text">Loading AI...</span>
+            </div>
             <div id="ai-progress-bar-container">
               <div id="ai-progress-bar"></div>
             </div>
             <button type="button" id="ai-retry-btn" class="hidden">
-              Retry AI Load
+              Retry
             </button>
           </div>
 
@@ -89,13 +92,15 @@
               rel="noopener noreferrer"
               data-track-event="github-click"
             >
-              <svg class="github-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+              <svg class="ui-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
               </svg>
               <span>GitHub</span>
             </a>
             <button type="button" id="login-stats-btn" class="login-link-pill">
-              <span aria-hidden="true">📊</span>
+              <svg class="ui-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 13V8M8 13V3M13 13V6"/>
+              </svg>
               <span>Stats</span>
             </button>
           </div>
@@ -109,7 +114,7 @@
         <!-- Top HUD: Win Chance, Belief X-Ray, Stats & GitHub -->
         <nav id="ataraxos-hud" aria-label="Game controls">
           <div class="hud-pill" id="win-prob-pill">
-            <span class="hud-label">AI Win Chance:</span>
+            <span class="hud-label">AI Win</span>
             <span id="win-prob-val">50.0%</span>
             <div id="win-prob-bar-bg"><div id="win-prob-bar-fill"></div></div>
           </div>
@@ -117,19 +122,26 @@
             type="button"
             id="xray-toggle-btn"
             class="hud-pill hud-btn"
-            title="Show hand predictions"
+            title="Show AI hand predictions"
             aria-expanded="false"
             aria-controls="belief-xray-panel"
           >
-            <span aria-hidden="true">👁</span> X-RAY
+            <svg class="ui-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8s-2.4 4.5-6.5 4.5S1.5 8 1.5 8Z"/>
+              <circle cx="8" cy="8" r="2"/>
+            </svg>
+            <span>X-Ray</span>
           </button>
           <button
             type="button"
             id="hud-stats-btn"
             class="hud-pill hud-btn"
-            title="View match & AI stats"
+            title="Match & AI stats"
           >
-            <span aria-hidden="true">📊</span> Stats
+            <svg class="ui-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 13V8M8 13V3M13 13V6"/>
+            </svg>
+            <span>Stats</span>
           </button>
           <a
             id="hud-github-link"
@@ -137,13 +149,14 @@
             href="https://github.com/TanishkBansode/uno-ataraxos"
             target="_blank"
             rel="noopener noreferrer"
-            title="View source code on GitHub"
+            title="GitHub Repository"
+            aria-label="GitHub Repository"
             data-track-event="github-click"
           >
-            <svg class="github-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor">
+            <svg class="ui-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor">
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
             </svg>
-            <span>GitHub</span>
+            <span class="hud-github-text">GitHub</span>
           </a>
         </nav>
 
@@ -154,17 +167,15 @@
             <button type="button" id="xray-close-btn" aria-label="Close AI Hand Predictions">&times;</button>
           </div>
           <div class="xray-body">
-            <div class="xray-section">
-              <div class="xray-grid">
-                <div class="xray-item"><span class="badge-tag red-tag">Red</span> <span id="xray-red">--%</span></div>
-                <div class="xray-item"><span class="badge-tag green-tag">Green</span> <span id="xray-green">--%</span></div>
-                <div class="xray-item"><span class="badge-tag blue-tag">Blue</span> <span id="xray-blue">--%</span></div>
-                <div class="xray-item"><span class="badge-tag yellow-tag">Yellow</span> <span id="xray-yellow">--%</span></div>
-                <div class="xray-item"><span class="badge-tag p2-tag">+2 Draw</span> <span id="xray-p2">--%</span></div>
-                <div class="xray-item"><span class="badge-tag p4-tag">+4 Wild</span> <span id="xray-p4">--%</span></div>
-              </div>
+            <div class="xray-grid">
+              <div class="xray-item"><span class="badge-tag red-tag">Red</span> <span class="xray-pct" id="xray-red">--%</span></div>
+              <div class="xray-item"><span class="badge-tag green-tag">Green</span> <span class="xray-pct" id="xray-green">--%</span></div>
+              <div class="xray-item"><span class="badge-tag blue-tag">Blue</span> <span class="xray-pct" id="xray-blue">--%</span></div>
+              <div class="xray-item"><span class="badge-tag yellow-tag">Yellow</span> <span class="xray-pct" id="xray-yellow">--%</span></div>
+              <div class="xray-item"><span class="badge-tag p2-tag">+2 Draw</span> <span class="xray-pct" id="xray-p2">--%</span></div>
+              <div class="xray-item"><span class="badge-tag p4-tag">+4 Wild</span> <span class="xray-pct" id="xray-p4">--%</span></div>
             </div>
-            <div class="xray-footer-note" id="xray-footer-note">Updates after AI's turn</div>
+            <div class="xray-footer-note hidden" id="xray-footer-note"></div>
           </div>
         </aside>
 
@@ -217,9 +228,7 @@
 
         <div id="winner-container" class="hidden">
           <div id="winner-wrapper">
-            <p class="winner-timeout" id="winner-timeout"></p>
-            <div class="winner-stage">
-              <img id="winner-card" src="resources/winner.png" alt="" draggable="false" />
+            <div class="winner-badge">
               <img id="winner-crown" src="resources/crown.png" alt="" draggable="false" />
               <img id="winner-avatar" src="resources/defaultAvatar.png" alt="Winner avatar" draggable="false" />
             </div>
@@ -228,9 +237,10 @@
             <div class="winner-actions">
               <button type="button" id="winner-return">Play Again</button>
               <button type="button" id="winner-stats-btn" class="winner-secondary-btn">
-                📊 Stats
+                Stats
               </button>
             </div>
+            <p class="winner-timeout" id="winner-timeout"></p>
           </div>
         </div>
       </div>
@@ -239,7 +249,7 @@
     <!-- In-Game Match & AI Stats Modal -->
     <dialog id="stats-dialog" closedby="any" aria-labelledby="stats-dialog-title">
       <div class="stats-dialog-header">
-        <h2 id="stats-dialog-title">Match &amp; AI Stats</h2>
+        <h2 id="stats-dialog-title">Stats</h2>
         <button type="button" id="stats-close-btn" class="stats-close-btn" aria-label="Close stats">
           &times;
         </button>
@@ -247,7 +257,7 @@
 
       <div class="stats-dialog-body">
         <section class="stats-section" aria-label="Match record">
-          <h3 class="stats-section-title">Your Record vs Ataraxos</h3>
+          <h3 class="stats-section-title">Record</h3>
           <div class="stats-grid">
             <div class="stat-card">
               <span class="stat-label">Games</span>
@@ -266,12 +276,8 @@
               <strong class="stat-value" id="stat-winrate">0.0%</strong>
             </div>
             <div class="stat-card">
-              <span class="stat-label">Win Streak</span>
-              <strong class="stat-value" id="stat-streak">0 (Best 0)</strong>
-            </div>
-            <div class="stat-card">
-              <span class="stat-label">Avg Turns</span>
-              <strong class="stat-value" id="stat-avg-turns">0.0</strong>
+              <span class="stat-label">Streak</span>
+              <strong class="stat-value" id="stat-streak">0</strong>
             </div>
             <div class="stat-card">
               <span class="stat-label">Fastest Win</span>
@@ -281,23 +287,19 @@
         </section>
 
         <section class="stats-section" aria-label="AI engine telemetry">
-          <h3 class="stats-section-title">AI Engine Performance</h3>
-          <div class="stats-grid stats-grid-compact">
-            <div class="stat-card">
+          <h3 class="stats-section-title">AI Engine</h3>
+          <div class="stats-engine-strip">
+            <div class="stat-inline">
               <span class="stat-label">Backend</span>
-              <strong class="stat-value stat-small" id="stat-backend">Waiting</strong>
+              <strong class="stat-value stat-small" id="stat-backend">—</strong>
             </div>
-            <div class="stat-card">
-              <span class="stat-label">AI Moves</span>
-              <strong class="stat-value" id="stat-ai-moves">0</strong>
+            <div class="stat-inline">
+              <span class="stat-label">Moves</span>
+              <strong class="stat-value stat-small" id="stat-ai-moves">0</strong>
             </div>
-            <div class="stat-card">
+            <div class="stat-inline">
               <span class="stat-label">Avg Latency</span>
-              <strong class="stat-value" id="stat-avg-latency">—</strong>
-            </div>
-            <div class="stat-card">
-              <span class="stat-label">Last Move</span>
-              <strong class="stat-value" id="stat-last-latency">—</strong>
+              <strong class="stat-value stat-small" id="stat-avg-latency">—</strong>
             </div>
           </div>
         </section>
@@ -306,8 +308,6 @@
           <h3 class="stats-section-title">Recent Matches</h3>
           <ul id="stats-recent-list" class="stats-recent-list"></ul>
         </section>
-
-        <div class="stats-analytics-note" id="stats-analytics-status"></div>
       </div>
 
       <div class="stats-dialog-footer">
@@ -318,10 +318,10 @@
           rel="noopener noreferrer"
           data-track-event="github-click"
         >
-          GitHub Repository ↗
+          GitHub ↗
         </a>
         <button type="button" id="stats-reset-btn" class="stats-reset-btn">
-          Reset Stats
+          Reset
         </button>
       </div>
     </dialog>

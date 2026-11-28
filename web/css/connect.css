@@ -1,17 +1,15 @@
 #login-container {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  min-height: 100vh;
-  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url("../resources/background.jpg") no-repeat center center;
-  background-size: cover;
+  background:
+    radial-gradient(circle at center, rgba(6, 9, 16, 0.56) 0%, rgba(6, 9, 16, 0.82) 100%),
+    url("../resources/background.jpg") no-repeat center center / cover;
   margin: 0;
   padding: 16px;
   box-sizing: border-box;
@@ -19,19 +17,22 @@
 }
 
 #login-form {
-  width: min(360px, calc(100vw - 32px));
+  width: min(352px, calc(100vw - 32px));
   box-sizing: border-box;
-  background: rgba(8, 11, 20, 0.86);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.78);
-  border-radius: 14px;
-  padding: 28px 26px 22px;
+  background: rgba(11, 14, 24, 0.9);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px 24px 20px;
   margin: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .login-brand {
@@ -46,67 +47,68 @@
     "Trebuchet MS",
     Arial,
     sans-serif;
-  font-size: 26px;
-  letter-spacing: 0.5px;
-  color: #fff;
+  font-size: 27px;
+  letter-spacing: 0.6px;
+  color: #f8fafc;
 }
 
 .login-subtitle {
   margin: 4px 0 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+  color: rgba(226, 232, 240, 0.64);
+  letter-spacing: 0.2px;
 }
 
 #login-form .input {
   width: 100%;
-  height: 46px;
+  height: 44px;
   box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid #6f6f6f;
-  background: rgba(0, 0, 0, 0.35);
-  color: #fff;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
   padding: 0 14px;
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
 #login-form .input::placeholder {
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(226, 232, 240, 0.4);
 }
 
 #login-form .input:focus {
   outline: none;
-  border-color: #1891d5;
-  box-shadow: 0 0 0 3px rgba(24, 145, 213, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.22);
 }
 
 #login-form #connect {
   width: 100%;
-  height: 46px;
-  background: #1891d5;
-  border: none;
+  height: 44px;
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   color: #fff;
-  font-size: 18px;
-  font-family:
-    Uni_Sans_Heavy,
-    "Trebuchet MS",
-    Arial,
-    sans-serif;
-  letter-spacing: 0.5px;
-  font-weight: 900;
-  border-radius: 8px;
+  font-size: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 0.2px;
+  font-weight: 700;
+  border-radius: 10px;
   cursor: pointer;
   transition:
-    background 0.2s,
-    transform 0.15s,
-    filter 0.2s;
-  box-shadow: 0 4px 14px rgba(24, 145, 213, 0.45);
+    filter 0.18s ease,
+    transform 0.12s ease,
+    box-shadow 0.18s ease;
+  box-shadow:
+    0 8px 20px rgba(2, 132, 199, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   display: block;
 }
 
 #login-form #connect:hover:not(:disabled) {
-  background: #25a1e8;
   filter: brightness(1.08);
   transform: translateY(-1px);
 }
@@ -117,28 +119,53 @@
 }
 
 #login-form #connect:disabled {
-  opacity: 0.7;
+  opacity: 0.68;
   cursor: wait;
 }
 
 #ai-loading-status {
-  margin-top: 2px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.72);
   text-align: center;
 }
 
+.ai-status-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  flex-shrink: 0;
+}
+
+.status-dot.ready {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+.status-dot.error {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+}
+
 #ai-status-text.error {
-  color: #ff6b6b;
+  color: #fca5a5;
   font-weight: 600;
 }
 
 #ai-progress-bar-container {
   width: 100%;
-  background: rgba(255, 255, 255, 0.2);
-  height: 6px;
-  border-radius: 3px;
-  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  height: 4px;
+  border-radius: 999px;
+  margin-top: 8px;
   overflow: hidden;
   display: none;
 }
@@ -146,16 +173,16 @@
 #ai-progress-bar {
   width: 0%;
   height: 100%;
-  background: #00e676;
-  transition: width 0.2s;
+  background: #10b981;
+  transition: width 0.2s ease;
 }
 
 #ai-retry-btn {
   margin-top: 8px;
-  background: rgba(255, 107, 107, 0.18);
-  border: 1px solid rgba(255, 107, 107, 0.6);
-  color: #fff;
-  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fecaca;
+  border-radius: 8px;
   padding: 5px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -163,42 +190,44 @@
 }
 
 #ai-retry-btn:hover {
-  background: rgba(255, 107, 107, 0.32);
+  background: rgba(239, 68, 68, 0.28);
 }
 
 .login-footer {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .login-link-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   min-height: 34px;
-  padding: 6px 12px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #e6edf3;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: rgba(241, 245, 249, 0.85);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
   transition:
-    background 0.2s,
-    border-color 0.2s,
-    transform 0.15s;
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    transform 0.12s ease;
 }
 
 .login-link-pill:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.36);
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.24);
   color: #fff;
   text-decoration: none;
   transform: translateY(-1px);
@@ -206,6 +235,6 @@
 
 @media (max-width: 420px) {
   #login-form {
-    padding: 22px 18px 18px;
+    padding: 24px 18px 18px;
   }
 }
