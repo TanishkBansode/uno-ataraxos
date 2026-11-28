@@ -48,6 +48,24 @@ body {
   src: url(../resources/fonts/Uni_Sans_Heavy.otf);
 }
 
+/* Hides content visually while keeping it accessible to screen readers */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+:where(a:any-link, button, input, .card[tabindex]):focus-visible {
+  outline: 3px solid #ffd60a;
+  outline-offset: 3px;
+}
+
 .hidden {
   display: none !important;
 }

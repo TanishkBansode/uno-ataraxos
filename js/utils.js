@@ -68,41 +68,52 @@ function collectImageSources() {
 export function preloadAssets() {
   if (preloadPromise) return preloadPromise;
 
-  const images = collectImageSources().map(
-    (src) =>
-      new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          if (typeof img.decode === "function") {
-            img
-              .decode()
-              .catch(() => {})
-              .finally(resolve);
-          } else {
-            resolve();
-          }
-        };
-        img.onerror = () => resolve();
-        img.src = src;
-        imageCache.push(img);
-      }),
-  );
+  const loadImage = (src) =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        if (typeof img.decode === "function") {
+          img
+            .decode()
+            .catch(() => {})
+            .finally(resolve);
+        } else {
+          resolve();
+        }
+      };
+      img.onerror = () => resolve();
+      img.src = src;
+      imageCache.push(img);
+    });
 
-  const sounds = SOUND_FILES.map(
-    (file) =>
-      new Promise((resolve) => {
-        const audio = new Audio(`resources/sounds/${file}`);
-        audio.preload = "auto";
-        audio.addEventListener("canplaythrough", resolve, { once: true });
-        audio.addEventListener("error", resolve, { once: true });
-        // Some browsers never fire canplaythrough for very short clips; don't block forever.
-        setTimeout(resolve, 1500);
-        audio.load();
-        audioCache.set(`resources/sounds/${file}`, audio);
-      }),
-  );
+  const loadSound = (file) =>
+    new Promise((resolve) => {
+      const audio = new Audio(`resources/sounds/${file}`);
+      audio.preload = "auto";
+      audio.addEventListener("canplaythrough", resolve, { once: true });
+      audio.addEventListener("error", resolve, { once: true });
+      // Some browsers never fire canplaythrough for very short clips; don't block forever.
+      setTimeout(resolve, 1500);
+      audio.load();
+      audioCache.set(`resources/sounds/${file}`, audio);
+    });
 
-  preloadPromise = Promise.all([...images, ...sounds]).catch(() => {});
+  const tasks = [
+    ...collectImageSources().map((src) => () => loadImage(src)),
+    ...SOUND_FILES.map((file) => () => loadSound(file)),
+  ];
+
+  // Limit concurrent asset fetches so HTTP/1.1 static servers aren't saturated.
+  const CONCURRENCY = 6;
+  let nextIdx = 0;
+  const workers = Array.from({ length: Math.min(CONCURRENCY, tasks.length) }, async () => {
+    while (nextIdx < tasks.length) {
+      const idx = nextIdx++;
+      await tasks[idx]();
+    }
+  });
+
+  preloadPromise = Promise.all(workers).catch(() => {});
   return preloadPromise;
 }
 

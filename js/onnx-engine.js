@@ -140,7 +140,7 @@ export class InBrowserAtaraxosEngine {
       const modelPath = resolveActorModelPath();
 
       if (progressCallback) {
-        progressCallback(10, `Fetching Ataraxos Actor (${hasWebGpu ? "WebGPU" : "WASM"})...`);
+        progressCallback(10, `Loading AI model (${hasWebGpu ? "WebGPU" : "WASM"})...`);
       }
 
       const modelBuffer = await this._fetchBuffer(
@@ -152,7 +152,7 @@ export class InBrowserAtaraxosEngine {
       );
 
       if (progressCallback) {
-        progressCallback(75, "Creating Neural Inference Session...");
+        progressCallback(75, "Initializing engine...");
       }
 
       const executionProviders = hasWebGpu
@@ -175,7 +175,7 @@ export class InBrowserAtaraxosEngine {
       if (hasWebGpu) {
         try {
           this.session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
-          if (progressCallback) progressCallback(85, "Prewarming Neural Pipelines...");
+          if (progressCallback) progressCallback(85, "Preparing model...");
           await this._prewarmActor();
           this.device = "webgpu";
         } catch (gpuErr) {
@@ -185,7 +185,7 @@ export class InBrowserAtaraxosEngine {
             graphOptimizationLevel: "all",
             logSeverityLevel: 3,
           });
-          if (progressCallback) progressCallback(85, "Prewarming WASM Pipelines...");
+          if (progressCallback) progressCallback(85, "Preparing model...");
           await this._prewarmActor();
           this.device = "wasm";
         }
@@ -195,7 +195,7 @@ export class InBrowserAtaraxosEngine {
           graphOptimizationLevel: "all",
           logSeverityLevel: 3,
         });
-        if (progressCallback) progressCallback(85, "Prewarming WASM Pipelines...");
+        if (progressCallback) progressCallback(85, "Preparing model...");
         await this._prewarmActor();
         this.device = "wasm";
       }
@@ -203,7 +203,7 @@ export class InBrowserAtaraxosEngine {
       this.isLoaded = true;
       this.isLoading = false;
       if (progressCallback) {
-        progressCallback(100, `⚡ Ataraxos-UNO Ready (${this.device.toUpperCase()})`);
+        progressCallback(100, `Ready (${this.device.toUpperCase()})`);
       }
     } catch (err) {
       this.isLoading = false;
@@ -269,7 +269,7 @@ export class InBrowserAtaraxosEngine {
         }
       }
       this.beliefLoaded = true;
-      if (progressCallback) progressCallback(100, "Belief X-Ray Models Ready");
+      if (progressCallback) progressCallback(100, "Card tracker ready");
     } catch (e) {
       console.warn("[Ataraxos] Could not load optional in-browser belief models:", e);
     }
@@ -360,14 +360,12 @@ export class InBrowserAtaraxosEngine {
     const encOut = await this.beliefEncSession.run(encFeeds);
     const encContext = encOut.enc_context.data; // Float32Array [256]
 
-    // Fast autoregressive sampling of K=16 belief hands
+    // Batched autoregressive sampling of K=16 belief hands
     const K = 16;
-    let hasP2Count = 0;
-    let hasP4Count = 0;
-    let redCount = 0;
-    let greenCount = 0;
-    let blueCount = 0;
-    let yellowCount = 0;
+    const encContextBatch = new Float32Array(K * 256);
+    for (let k = 0; k < K; k++) {
+      encContextBatch.set(encContext, k * 256);
+    }
 
     // Unseen card limits from cardFeatures (channel 2 is unseen_total)
     const unseenBase = new Float32Array(54);
@@ -375,72 +373,97 @@ export class InBrowserAtaraxosEngine {
       unseenBase[c] = cardFeatures[c * 7 + 2];
     }
 
+    const picked = new Float32Array(K * 54);
+    const remElig = new Float32Array(K * 54);
     for (let k = 0; k < K; k++) {
-      const picked = new Float32Array(54);
-      const remElig = new Float32Array(unseenBase);
-      let prevToken = 54n; // BOS
-      let hasP2 = false;
-      let hasP4 = false;
-      let hasRed = false;
-      let hasGreen = false;
-      let hasBlue = false;
-      let hasYellow = false;
+      remElig.set(unseenBase, k * 54);
+    }
+    const prevTokens = new BigInt64Array(K).fill(54n); // BOS
+    const hasP2 = new Uint8Array(K);
+    const hasP4 = new Uint8Array(K);
+    const hasRed = new Uint8Array(K);
+    const hasGreen = new Uint8Array(K);
+    const hasBlue = new Uint8Array(K);
+    const hasYellow = new Uint8Array(K);
 
-      for (let j = 0; j < oppHandSize; j++) {
-        const needed = oppHandSize - j;
-        const stepMask = new Float32Array(54);
+    for (let j = 0; j < oppHandSize; j++) {
+      const needed = oppHandSize - j;
+      const stepMask = new Float32Array(K * 54);
+      const neededArr = new Float32Array(K).fill(needed);
+
+      for (let k = 0; k < K; k++) {
+        const base = k * 54;
+        const prev = Number(prevTokens[k]);
         let availSum = 0;
         for (let c = 0; c < 54; c++) {
-          availSum += remElig[c];
-          if (c <= Number(prevToken) && remElig[c] > 0 && availSum >= needed) {
-            stepMask[c] = 1.0;
+          availSum += remElig[base + c];
+          if (c <= prev && remElig[base + c] > 0 && availSum >= needed) {
+            stepMask[base + c] = 1.0;
           }
         }
+      }
 
-        const decFeeds = {
-          enc_context: new ort.Tensor("float32", encContext, [1, 256]),
-          picked_so_far: new ort.Tensor("float32", picked, [1, 54]),
-          remaining_eligible: new ort.Tensor("float32", remElig, [1, 54]),
-          prev_card_token: new ort.Tensor("int64", new BigInt64Array([prevToken]), [1]),
-          cards_still_needed: new ort.Tensor("float32", new Float32Array([needed]), [1]),
-          step_legal_mask: new ort.Tensor("float32", stepMask, [1, 54]),
-        };
+      const decFeeds = {
+        enc_context: new ort.Tensor("float32", encContextBatch, [K, 256]),
+        picked_so_far: new ort.Tensor("float32", picked, [K, 54]),
+        remaining_eligible: new ort.Tensor("float32", remElig, [K, 54]),
+        prev_card_token: new ort.Tensor("int64", prevTokens, [K]),
+        cards_still_needed: new ort.Tensor("float32", neededArr, [K]),
+        step_legal_mask: new ort.Tensor("float32", stepMask, [K, 54]),
+      };
 
-        const decOut = await this.beliefDecSession.run(decFeeds);
-        const probs = decOut.step_probs.data;
+      const decOut = await this.beliefDecSession.run(decFeeds);
+      const probs = decOut.step_probs.data;
 
-        // Sample card proportional to probabilities
-        let r = Math.random();
-        let chosenCard = 0;
+      for (let k = 0; k < K; k++) {
+        const base = k * 54;
+        let lastLegalCard = -1;
+        for (let c = 0; c < 54; c++) {
+          if (stepMask[base + c] > 0.5) {
+            lastLegalCard = c;
+          }
+        }
+        const r = Math.random();
+        let chosenCard = lastLegalCard >= 0 ? lastLegalCard : 0;
         let cum = 0;
         for (let c = 0; c < 54; c++) {
-          cum += probs[c];
-          if (r <= cum && stepMask[c] > 0.5) {
-            chosenCard = c;
-            break;
+          if (stepMask[base + c] > 0.5) {
+            cum += probs[base + c];
+            if (r <= cum) {
+              chosenCard = c;
+              break;
+            }
           }
         }
 
-        picked[chosenCard]++;
-        remElig[chosenCard] = Math.max(0, remElig[chosenCard] - 1);
-        prevToken = BigInt(chosenCard);
+        picked[base + chosenCard]++;
+        remElig[base + chosenCard] = Math.max(0, remElig[base + chosenCard] - 1);
+        prevTokens[k] = BigInt(chosenCard);
 
         const tr = cardTrait(chosenCard);
         const col = cardColor(chosenCard);
-        if (tr === TRAIT.DRAW_2) hasP2 = true;
-        if (tr === TRAIT.WILD_DRAW_4) hasP4 = true;
-        if (col === 0) hasRed = true;
-        if (col === 1) hasGreen = true;
-        if (col === 2) hasBlue = true;
-        if (col === 3) hasYellow = true;
+        if (tr === TRAIT.DRAW_2) hasP2[k] = 1;
+        if (tr === TRAIT.WILD_DRAW_4) hasP4[k] = 1;
+        if (col === 0) hasRed[k] = 1;
+        if (col === 1) hasGreen[k] = 1;
+        if (col === 2) hasBlue[k] = 1;
+        if (col === 3) hasYellow[k] = 1;
       }
+    }
 
-      if (hasP2) hasP2Count++;
-      if (hasP4) hasP4Count++;
-      if (hasRed) redCount++;
-      if (hasGreen) greenCount++;
-      if (hasBlue) blueCount++;
-      if (hasYellow) yellowCount++;
+    let hasP2Count = 0;
+    let hasP4Count = 0;
+    let redCount = 0;
+    let greenCount = 0;
+    let blueCount = 0;
+    let yellowCount = 0;
+    for (let k = 0; k < K; k++) {
+      hasP2Count += hasP2[k];
+      hasP4Count += hasP4[k];
+      redCount += hasRed[k];
+      greenCount += hasGreen[k];
+      blueCount += hasBlue[k];
+      yellowCount += hasYellow[k];
     }
 
     return {

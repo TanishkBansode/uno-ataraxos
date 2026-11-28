@@ -51,7 +51,7 @@ function resolveDefaultApiUrl() {
     }
   }
 
-  // Local development: scripts/serve_model.py serves the UI and the API from
+  // Local development: scripts/serve.py serves the UI and the API from
   // the same origin, regardless of which port was chosen.
   if (LOCAL_HOSTNAMES.has(hostname)) {
     return window.location.origin;
@@ -62,7 +62,20 @@ function resolveDefaultApiUrl() {
   return null;
 }
 
+function resolveGoatCounterCode() {
+  if (typeof document !== "undefined") {
+    const meta = document.querySelector('meta[name="goatcounter-code"]');
+    const value = meta && (meta.getAttribute("content") || "").trim();
+    if (value) return value;
+  }
+  return "";
+}
+
 export const CONFIG = {
+  // Links & Analytics
+  GITHUB_URL: "https://github.com/TanishkBansode/uno-ataraxos",
+  GOATCOUNTER_CODE: resolveGoatCounterCode(),
+
   // Endpoints
   DEFAULT_API_URL: resolveDefaultApiUrl(),
   // A user-typed ?api= wins over the in-browser GPU engine; deployment hints do not.

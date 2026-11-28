@@ -104,9 +104,13 @@ export class AtaraxosModelClient {
       });
       if (response.ok) {
         this.serverHealthData = await response.json();
-        this.isServerAvailable = true;
+        const agentLoaded =
+          this.serverHealthData &&
+          this.serverHealthData.status === "ok" &&
+          this.serverHealthData.agent_loaded !== false;
+        this.isServerAvailable = Boolean(agentLoaded);
         this.remoteUnavailable = false;
-        return true;
+        return this.isServerAvailable;
       } else {
         this.isServerAvailable = false;
         return false;
@@ -173,7 +177,7 @@ export class AtaraxosModelClient {
       }
     }
 
-    // 2. Browser-Native In-Browser Inference (Risk-Averse Search or Blueprint)
+    // 2. Client-Side In-Browser Inference (Risk-Averse Search or Blueprint)
     if (!choice) {
       try {
         const browserEngine = await this._ensureInBrowserEngine();
