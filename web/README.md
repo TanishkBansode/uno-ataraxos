@@ -81,7 +81,17 @@ This script validates:
 
 ---
 
-## 4. Browser Compatibility & Performance
+## 4. Analytics & Stats Tracking
+
+- **In-Game Match & AI Stats (`📊 Stats`):** Tracks games played, wins/losses, win rate, win streaks, average turns, fastest win, recent matches, active inference backend (`WebGPU` / `WASM` / `Python Daemon`), and AI move latency in `localStorage`.
+- **Site Visitor & Click Analytics (GoatCounter):** Cookie-free visitor and event tracking (`play-clicked`, `game-started`, `game-over-*`, `github-click`, `xray-open`, `stats-open`). To activate your dashboard:
+  1. Sign up for a free site at <https://www.goatcounter.com> (e.g. `ataraxos-uno.goatcounter.com`).
+  2. Set `<meta name="goatcounter-code" content="ataraxos-uno" />` in `web/index.html`.
+  3. Localhost visits are automatically ignored so local testing never pollutes production stats.
+
+---
+
+## 5. Browser Compatibility & Performance
 
 - **WebGPU (Preferred):** Provides sub-millisecond tensor operations on Chrome, Edge, and Safari (macOS 14+ / iOS 17+). Runs on Metal, DirectX 12, or Vulkan.
 - **WebAssembly (WASM Fallback):** Automatically activates if WebGPU is unavailable or disabled. Multi-threaded WASM utilizes SIMD instructions for CPU evaluation.

@@ -7,34 +7,51 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="uno-api" content="" />
+    <!-- Set content="YOUR_SITE_CODE" (from https://www.goatcounter.com) to enable privacy-friendly visitor & click analytics -->
+    <meta name="goatcounter-code" content="" />
     <title>Ataraxos-UNO — Imperfect-Information 1v1 UNO AI</title>
-    <meta name="description" content="Play against Ataraxos-UNO — an imperfect-information RL agent and risk-averse search engine for 1v1 UNO running 100% client-side via WebGPU." />
+    <meta
+      name="description"
+      content="Play against Ataraxos-UNO — an imperfect-information RL agent and risk-averse search engine for 1v1 UNO running 100% client-side via WebGPU."
+    />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://tanishkbansode.github.io/uno-ataraxos/" />
     <meta property="og:title" content="Ataraxos-UNO — Imperfect-Information 1v1 UNO AI" />
-    <meta property="og:description" content="Play against Ataraxos-UNO — an imperfect-information RL agent and risk-averse search engine for 1v1 UNO running 100% client-side via WebGPU." />
+    <meta
+      property="og:description"
+      content="Play against Ataraxos-UNO — an imperfect-information RL agent and risk-averse search engine for 1v1 UNO running 100% client-side via WebGPU."
+    />
     <meta property="og:image" content="https://tanishkbansode.github.io/uno-ataraxos/og-preview.png" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://tanishkbansode.github.io/uno-ataraxos/" />
     <meta name="twitter:title" content="Ataraxos-UNO — Imperfect-Information 1v1 UNO AI" />
-    <meta name="twitter:description" content="Play against Ataraxos-UNO — an imperfect-information RL agent and risk-averse search engine for 1v1 UNO running 100% client-side via WebGPU." />
+    <meta
+      name="twitter:description"
+      content="Play against Ataraxos-UNO — an imperfect-information RL agent and risk-averse search engine for 1v1 UNO running 100% client-side via WebGPU."
+    />
     <meta name="twitter:image" content="https://tanishkbansode.github.io/uno-ataraxos/og-preview.png" />
     <link href="favicon.ico" rel="shortcut icon" type="image/x-icon" />
     <link href="css/bootstrap.min.css" rel="stylesheet" />
     <link href="css/utils.css" rel="stylesheet" />
     <link href="css/connect.css" rel="stylesheet" />
     <link href="css/game.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.all.min.js" crossorigin="anonymous"></script>
   </head>
 
   <body>
-    <div id="body">
+    <main id="body">
       <div id="login-container">
-        <div id="login-form">
+        <form id="login-form" novalidate>
+          <div class="login-brand">
+            <h1 class="login-title">Ataraxos-UNO</h1>
+            <p class="login-subtitle">1v1 Neural RL &amp; Risk-Averse Search AI</p>
+          </div>
+
+          <label class="visually-hidden" for="username">Player Name</label>
           <input
             class="input form-control"
             id="username"
@@ -46,66 +63,90 @@
             autocomplete="nickname"
             autofocus
           />
-          <input type="submit" id="connect" value="Play!" />
-          <div
-            id="ai-loading-status"
-            style="
-              margin-top: 15px;
-              font-size: 13px;
-              color: #fff;
-              text-align: center;
-            "
-          >
-            <div id="ai-status-text">
-              Loading AI...
+          <button type="submit" id="connect">Play!</button>
+
+          <div id="ai-loading-status" aria-live="polite">
+            <div id="ai-status-text">Loading AI...</div>
+            <div id="ai-progress-bar-container">
+              <div id="ai-progress-bar"></div>
             </div>
-            <div
-              id="ai-progress-bar-container"
-              style="
-                width: 100%;
-                background: rgba(255, 255, 255, 0.25);
-                height: 6px;
-                border-radius: 3px;
-                margin-top: 6px;
-                overflow: hidden;
-                display: none;
-              "
-            >
-              <div
-                id="ai-progress-bar"
-                style="
-                  width: 0%;
-                  height: 100%;
-                  background: #00e676;
-                  transition: width 0.2s;
-                "
-              ></div>
-            </div>
+            <button type="button" id="ai-retry-btn" class="hidden">
+              Retry AI Load
+            </button>
           </div>
-        </div>
+
+          <div class="login-footer">
+            <a
+              id="login-github-link"
+              class="login-link-pill"
+              href="https://github.com/TanishkBansode/uno-ataraxos"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-track-event="github-click"
+            >
+              <svg class="github-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+              </svg>
+              <span>GitHub</span>
+            </a>
+            <button type="button" id="login-stats-btn" class="login-link-pill">
+              <span aria-hidden="true">📊</span>
+              <span>Stats</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       <div id="game-container" class="hidden">
-        <img draggable="false" src="resources/gameBackground.jpg" id="bgimg" />
-        <img draggable="false" src="resources/table.png" id="table" />
+        <img draggable="false" src="resources/gameBackground.jpg" id="bgimg" alt="" />
+        <img draggable="false" src="resources/table.png" id="table" alt="" />
 
-        <!-- Clean Consumer HUD: AI Win Prob, Belief X-Ray Toggle -->
-        <div id="ataraxos-hud">
+        <!-- Top HUD: Win Chance, Belief X-Ray, Stats & GitHub -->
+        <nav id="ataraxos-hud" aria-label="Game controls">
           <div class="hud-pill" id="win-prob-pill">
             <span class="hud-label">AI Win Chance:</span>
             <span id="win-prob-val">50.0%</span>
             <div id="win-prob-bar-bg"><div id="win-prob-bar-fill"></div></div>
           </div>
-          <button id="xray-toggle-btn" class="hud-pill hud-btn" title="Show hand predictions">
-            👁 X-RAY
+          <button
+            type="button"
+            id="xray-toggle-btn"
+            class="hud-pill hud-btn"
+            title="Show hand predictions"
+            aria-expanded="false"
+            aria-controls="belief-xray-panel"
+          >
+            <span aria-hidden="true">👁</span> X-RAY
           </button>
-        </div>
+          <button
+            type="button"
+            id="hud-stats-btn"
+            class="hud-pill hud-btn"
+            title="View match & AI stats"
+          >
+            <span aria-hidden="true">📊</span> Stats
+          </button>
+          <a
+            id="hud-github-link"
+            class="hud-pill hud-btn hud-link"
+            href="https://github.com/TanishkBansode/uno-ataraxos"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View source code on GitHub"
+            data-track-event="github-click"
+          >
+            <svg class="github-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
+            </svg>
+            <span>GitHub</span>
+          </a>
+        </nav>
 
         <!-- Belief X-Ray Panel -->
-        <div id="belief-xray-panel" class="hidden">
+        <aside id="belief-xray-panel" class="hidden" aria-label="AI Hand Predictions">
           <div class="xray-header">
             <span>AI Hand Predictions</span>
-            <button id="xray-close-btn">&times;</button>
+            <button type="button" id="xray-close-btn" aria-label="Close AI Hand Predictions">&times;</button>
           </div>
           <div class="xray-body">
             <div class="xray-section">
@@ -118,9 +159,9 @@
                 <div class="xray-item"><span class="badge-tag p4-tag">+4 Wild</span> <span id="xray-p4">--%</span></div>
               </div>
             </div>
-            <div class="xray-footer-note">Updates after AI's turn</div>
+            <div class="xray-footer-note" id="xray-footer-note">Updates after AI's turn</div>
           </div>
-        </div>
+        </aside>
 
         <!-- Opponent (Bot) Cards at top -->
         <div id="bot-cards"></div>
@@ -131,12 +172,16 @@
             src="resources/cards/UNO_CARD.png"
             class="card-desk"
             id="START_CARD"
+            alt="Start game deck"
           />
+          <button type="button" id="start-game-btn" class="start-deal-btn">
+            Deal Cards
+          </button>
         </div>
 
         <div id="stacking-container">
-          <img id="stacking-image" src="resources/stacking.png" />
-          <label id="stacking-count"></label>
+          <img id="stacking-image" src="resources/stacking.png" alt="" />
+          <span id="stacking-count"></span>
         </div>
 
         <div id="players"></div>
@@ -144,46 +189,137 @@
           id="arrow"
           class="arrow directionRight"
           src="resources/direction.png"
+          alt=""
           style="visibility: hidden"
         />
-        <img
+        <button
+          type="button"
           id="carddeck"
           class="disabled"
-          src="resources/desk.png"
-          draggable="false"
           title="Draw card"
-        />
+          aria-label="Draw card"
+        >
+          <img src="resources/desk.png" alt="" draggable="false" />
+        </button>
         <div id="cards"></div>
 
-        <div id="color-select">
-          <canvas class="color" id="YELLOW"></canvas>
-          <canvas class="color" id="GREEN"></canvas>
-          <canvas class="color" id="BLUE"></canvas>
-          <canvas class="color" id="RED"></canvas>
+        <div id="color-select" role="group" aria-label="Choose wild color">
+          <button type="button" class="color" id="YELLOW" aria-label="Choose Yellow"></button>
+          <button type="button" class="color" id="GREEN" aria-label="Choose Green"></button>
+          <button type="button" class="color" id="BLUE" aria-label="Choose Blue"></button>
+          <button type="button" class="color" id="RED" aria-label="Choose Red"></button>
         </div>
-
-        <img id="cover" />
 
         <div id="winner-container" class="hidden">
           <div id="winner-wrapper">
-            <label class="winner-title" id="winner-timeout"></label>
-            <label class="winner-title" id="winner-username"></label>
-            <img
-              id="winner-card"
-              src="resources/winner.png"
-              draggable="false"
-            />
-            <img id="winner-avatar" draggable="false" />
-            <img
-              id="winner-crown"
-              src="resources/crown.png"
-              draggable="false"
-            />
-            <span id="winner-return">Play Again</span>
+            <p class="winner-timeout" id="winner-timeout"></p>
+            <div class="winner-stage">
+              <img id="winner-card" src="resources/winner.png" alt="" draggable="false" />
+              <img id="winner-crown" src="resources/crown.png" alt="" draggable="false" />
+              <img id="winner-avatar" src="resources/defaultAvatar.png" alt="Winner avatar" draggable="false" />
+            </div>
+            <h2 class="winner-title" id="winner-username"></h2>
+            <p class="winner-summary" id="winner-summary"></p>
+            <div class="winner-actions">
+              <button type="button" id="winner-return">Play Again</button>
+              <button type="button" id="winner-stats-btn" class="winner-secondary-btn">
+                📊 Stats
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
+
+    <!-- In-Game Match & AI Stats Modal -->
+    <dialog id="stats-dialog" closedby="any" aria-labelledby="stats-dialog-title">
+      <div class="stats-dialog-header">
+        <h2 id="stats-dialog-title">Match &amp; AI Stats</h2>
+        <button type="button" id="stats-close-btn" class="stats-close-btn" aria-label="Close stats">
+          &times;
+        </button>
+      </div>
+
+      <div class="stats-dialog-body">
+        <section class="stats-section" aria-label="Match record">
+          <h3 class="stats-section-title">Your Record vs Ataraxos</h3>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <span class="stat-label">Games</span>
+              <strong class="stat-value" id="stat-games">0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Wins</span>
+              <strong class="stat-value win" id="stat-wins">0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Losses</span>
+              <strong class="stat-value loss" id="stat-losses">0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Win Rate</span>
+              <strong class="stat-value" id="stat-winrate">0.0%</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Win Streak</span>
+              <strong class="stat-value" id="stat-streak">0 (Best 0)</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Avg Turns</span>
+              <strong class="stat-value" id="stat-avg-turns">0.0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Fastest Win</span>
+              <strong class="stat-value" id="stat-fastest-win">—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="stats-section" aria-label="AI engine telemetry">
+          <h3 class="stats-section-title">AI Engine Performance</h3>
+          <div class="stats-grid stats-grid-compact">
+            <div class="stat-card">
+              <span class="stat-label">Backend</span>
+              <strong class="stat-value stat-small" id="stat-backend">Waiting</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">AI Moves</span>
+              <strong class="stat-value" id="stat-ai-moves">0</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Avg Latency</span>
+              <strong class="stat-value" id="stat-avg-latency">—</strong>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Last Move</span>
+              <strong class="stat-value" id="stat-last-latency">—</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="stats-section" aria-label="Recent matches">
+          <h3 class="stats-section-title">Recent Matches</h3>
+          <ul id="stats-recent-list" class="stats-recent-list"></ul>
+        </section>
+
+        <div class="stats-analytics-note" id="stats-analytics-status"></div>
+      </div>
+
+      <div class="stats-dialog-footer">
+        <a
+          class="stats-github-link"
+          href="https://github.com/TanishkBansode/uno-ataraxos"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-track-event="github-click"
+        >
+          GitHub Repository ↗
+        </a>
+        <button type="button" id="stats-reset-btn" class="stats-reset-btn">
+          Reset Stats
+        </button>
+      </div>
+    </dialog>
 
     <script type="module" src="js/game.js"></script>
   </body>

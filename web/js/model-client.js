@@ -104,9 +104,13 @@ export class AtaraxosModelClient {
       });
       if (response.ok) {
         this.serverHealthData = await response.json();
-        this.isServerAvailable = true;
+        const agentLoaded =
+          this.serverHealthData &&
+          this.serverHealthData.status === "ok" &&
+          this.serverHealthData.agent_loaded !== false;
+        this.isServerAvailable = Boolean(agentLoaded);
         this.remoteUnavailable = false;
-        return true;
+        return this.isServerAvailable;
       } else {
         this.isServerAvailable = false;
         return false;

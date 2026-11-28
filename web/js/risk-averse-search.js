@@ -123,6 +123,27 @@ export class RiskAverseSearchEngine {
     };
   }
 
+  async _resolveBeliefXray(rootEnv, rootCf, rootGf, rootHt, oppHandSize, sampledHands = null) {
+    if (
+      this.onnxEngine.beliefLoaded &&
+      this.onnxEngine.beliefEncSession &&
+      this.onnxEngine.beliefDecSession &&
+      oppHandSize > 0
+    ) {
+      try {
+        const neuralXray = await this.onnxEngine.sampleBeliefXray({
+          cardFeatures: rootCf,
+          globalFeatures: rootGf,
+          historyTokens: rootHt,
+          oppHandSize,
+        });
+        if (neuralXray) return neuralXray;
+      } catch (_) {}
+    }
+    const hands = sampledHands || this.sampleOppHands(rootEnv, 16, oppHandSize);
+    return this.computeBeliefXray(hands, oppHandSize);
+  }
+
   /**
    * Run in-browser Milestone 8 Risk-Averse Portfolio Search.
    */
@@ -137,28 +158,9 @@ export class RiskAverseSearchEngine {
     }
     const numA = legalActions.length;
 
-    // Early exit if 0 or 1 legal action (0 ms)
-    if (numA <= 1) {
-      const chosenAct = numA === 1 ? legalActions[0] : 60;
-      const searchProbs = new Float32Array(61);
-      searchProbs[chosenAct] = 1.0;
-      return {
-        action_id: chosenAct,
-        action: ACTION_NAMES[chosenAct] || "draw",
-        action_key: ACTION_NAMES[chosenAct] || "draw",
-        action_probs: Array.from(searchProbs),
-        win_prob: 0.5,
-        latency_ms: performance.now() - t0,
-        mode_used: "risk_averse_search",
-        technique_label: "Risk-Averse Portfolio Search",
-        belief_xray: {
-          p_plus_2: 0, p_plus_4: 0, p_red: 0, p_green: 0, p_blue: 0, p_yellow: 0,
-          opp_hand_size: rootEnv.hands[1 - rootPlayer].length,
-        },
-      };
-    }
+    const oppHandSize = rootEnv.hands[1 - rootPlayer].length;
 
-    // 1. Root Blueprint Prediction
+    // 1. Root Blueprint Prediction (also gives accurate win_prob on 0/1-move turns)
     const rootCf = rootEnv.getCardFeatures(rootPlayer);
     const rootGf = rootEnv.getGlobalFeatures(rootPlayer);
     const rootHt = rootEnv.getHistoryTokens(rootPlayer, true);
@@ -175,6 +177,25 @@ export class RiskAverseSearchEngine {
     const wdlRoot = Array.from(rootResults.wdl_probs.data);
     const rootWinProb = (wdlRoot[2] || 0) + 0.5 * (wdlRoot[1] || 0);
 
+    // Early exit if 0 or 1 legal action (skip rollouts, keep real win_prob & belief_xray)
+    if (numA <= 1) {
+      const chosenAct = numA === 1 ? legalActions[0] : 60;
+      const searchProbs = new Float32Array(61);
+      searchProbs[chosenAct] = 1.0;
+      const earlyXray = await this._resolveBeliefXray(rootEnv, rootCf, rootGf, rootHt, oppHandSize);
+      return {
+        action_id: chosenAct,
+        action: ACTION_NAMES[chosenAct] || "draw",
+        action_key: ACTION_NAMES[chosenAct] || "draw",
+        action_probs: Array.from(searchProbs),
+        win_prob: rootWinProb,
+        latency_ms: performance.now() - t0,
+        mode_used: "risk_averse_search",
+        technique_label: "Risk-Averse Portfolio Search",
+        belief_xray: earlyXray,
+      };
+    }
+
     // Fallback if downgraded to fast actor due to past high latency
     if (this.adaptationState.downgradedToFastActor) {
       let bestA = legalActions[0];
@@ -185,6 +206,7 @@ export class RiskAverseSearchEngine {
           bestA = a;
         }
       }
+      const fastXray = await this._resolveBeliefXray(rootEnv, rootCf, rootGf, rootHt, oppHandSize);
       return {
         action_id: bestA,
         action: ACTION_NAMES[bestA] || "draw",
@@ -194,7 +216,7 @@ export class RiskAverseSearchEngine {
         latency_ms: performance.now() - t0,
         mode_used: "risk_averse_search",
         technique_label: "Risk-Averse Search (Fast)",
-        belief_xray: null,
+        belief_xray: fastXray,
       };
     }
 
@@ -214,9 +236,15 @@ export class RiskAverseSearchEngine {
     const K_eff = Math.min(32, Math.max(8, Math.floor(maxTotalWorlds / numA)));
 
     // 3. Sample Opponent Worlds & Assign Styles
-    const oppHandSize = rootEnv.hands[1 - rootPlayer].length;
     const sampledOppHands = this.sampleOppHands(rootEnv, K_eff, oppHandSize);
-    const beliefXray = this.computeBeliefXray(sampledOppHands, oppHandSize);
+    const beliefXray = await this._resolveBeliefXray(
+      rootEnv,
+      rootCf,
+      rootGf,
+      rootHt,
+      oppHandSize,
+      sampledOppHands,
+    );
 
     // Portfolio weights: 0.45 Blueprint (Style 0), 0.35 Aggressive (Style 1), 0.20 Noisy (Style 2)
     const pw = [0.45, 0.35, 0.20];

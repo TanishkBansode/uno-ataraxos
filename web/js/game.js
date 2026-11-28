@@ -3,6 +3,14 @@ import { CONFIG } from "./config.js";
 import { UnoGameEngine } from "./game-engine.js";
 import { AtaraxosModelClient, FatalNeuralModelException } from "./model-client.js";
 import {
+  initAnalytics,
+  trackEvent,
+  recordMatchResult,
+  recordAiDecision,
+  getStatsSummary,
+  initStatsDialog,
+} from "./stats.js";
+import {
   playSound,
   setOverlay,
   preloadAssets,
@@ -20,6 +28,8 @@ if (typeof window !== "undefined") {
   window.modelClient = modelClient;
 }
 
+initAnalytics();
+
 const humanPlayerId = "human";
 const botPlayerId = "bot";
 
@@ -31,6 +41,7 @@ let pendingHumanCardId = null;
 let pendingHumanCardImg = null;
 let deskCardEl = null;
 let nextGameInterval = null;
+let winnerShowTimeout = null;
 let resizeFrame = null;
 
 // ---------------------------------------------------------------------------
@@ -38,9 +49,14 @@ let resizeFrame = null;
 // ---------------------------------------------------------------------------
 
 const loginContainer = document.getElementById("login-container");
+const loginForm = document.getElementById("login-form");
 const gameContainer = document.getElementById("game-container");
 const usernameInput = document.getElementById("username");
 const connectBtn = document.getElementById("connect");
+const aiRetryBtn = document.getElementById("ai-retry-btn");
+const loginStatsBtn = document.getElementById("login-stats-btn");
+const hudStatsBtn = document.getElementById("hud-stats-btn");
+const winnerStatsBtn = document.getElementById("winner-stats-btn");
 const cardsContainer = document.getElementById("cards");
 const cardDesk = document.getElementById("cards-desk");
 const cardDeckBtn = document.getElementById("carddeck");
@@ -52,6 +68,7 @@ const arrowImg = document.getElementById("arrow");
 const winnerContainer = document.getElementById("winner-container");
 const winnerWrapper = document.getElementById("winner-wrapper");
 const winnerUsername = document.getElementById("winner-username");
+const winnerSummary = document.getElementById("winner-summary");
 const winnerAvatar = document.getElementById("winner-avatar");
 const winnerTimeout = document.getElementById("winner-timeout");
 const winnerReturnBtn = document.getElementById("winner-return");
@@ -63,22 +80,69 @@ const winProbBarFill = document.getElementById("win-prob-bar-fill");
 const xrayToggleBtn = document.getElementById("xray-toggle-btn");
 const xrayPanel = document.getElementById("belief-xray-panel");
 const xrayCloseBtn = document.getElementById("xray-close-btn");
+const xrayFooterNote = document.getElementById("xray-footer-note");
+
+// Stats modal & analytics click tracking
+const statsDialog = initStatsDialog();
+
+for (const btn of [loginStatsBtn, hudStatsBtn, winnerStatsBtn]) {
+  if (btn) {
+    btn.addEventListener("click", () => {
+      if (btn === winnerStatsBtn && nextGameInterval) {
+        clearNextGameInterval();
+        if (winnerTimeout) winnerTimeout.textContent = "Auto-next paused";
+      }
+      statsDialog.open();
+    });
+  }
+}
+
+for (const trackedEl of document.querySelectorAll("[data-track-event]")) {
+  trackedEl.addEventListener("click", () => {
+    const evt = trackedEl.dataset.trackEvent;
+    if (evt) trackEvent(evt, trackedEl.title || trackedEl.textContent.trim());
+  });
+}
+
+function setXrayOpen(open) {
+  if (!xrayPanel || !xrayToggleBtn) return;
+  xrayPanel.classList.toggle("hidden", !open);
+  xrayToggleBtn.classList.toggle("active", open);
+  xrayToggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+
+  if (open) {
+    trackEvent("xray-open", "Opened Belief X-Ray");
+    if (modelClient.isInBrowserLoaded && !modelClient.inBrowserEngine.beliefLoaded) {
+      if (xrayFooterNote) {
+        xrayFooterNote.textContent = "Loading neural belief model...";
+      }
+      modelClient
+        .initInBrowserBelief()
+        .then(() => {
+          if (xrayFooterNote) {
+            xrayFooterNote.textContent = "Neural Belief Net active — updates after AI's turn";
+          }
+        })
+        .catch((err) => {
+          console.warn("[Ataraxos] Belief init error:", err);
+          if (xrayFooterNote) {
+            xrayFooterNote.textContent = "Updates after AI's turn";
+          }
+        });
+    }
+  }
+}
 
 if (xrayToggleBtn && xrayPanel) {
   xrayToggleBtn.addEventListener("click", () => {
-    xrayPanel.classList.toggle("hidden");
-    if (!xrayPanel.classList.contains("hidden")) {
-      // In-browser mode: pre-warm belief models if not already loaded
-      if (modelClient.isInBrowserLoaded && !modelClient.inBrowserEngine.beliefLoaded) {
-        modelClient.initInBrowserBelief().catch((err) => console.warn("[Ataraxos] Belief init error:", err));
-      }
-    }
+    const isHidden = xrayPanel.classList.contains("hidden");
+    setXrayOpen(isHidden);
   });
 }
 
 if (xrayCloseBtn && xrayPanel) {
   xrayCloseBtn.addEventListener("click", () => {
-    xrayPanel.classList.add("hidden");
+    setXrayOpen(false);
   });
 }
 
@@ -153,6 +217,37 @@ function cardImageSrc(card, useColorGif = false) {
   return `resources/cards/${card.color}_${card.type}.png`;
 }
 
+function formatCardAriaLabel(card) {
+  if (!card) return "UNO card";
+  const colorMap = {
+    RED: "Red",
+    GREEN: "Green",
+    BLUE: "Blue",
+    YELLOW: "Yellow",
+    ANY: "Wild",
+  };
+  const typeMap = {
+    ZERO: "0",
+    ONE: "1",
+    TWO: "2",
+    THREE: "3",
+    FOUR: "4",
+    FIVE: "5",
+    SIX: "6",
+    SEVEN: "7",
+    EIGHT: "8",
+    NINE: "9",
+    BLOCK: "Skip",
+    REVERSE: "Reverse",
+    PLUS_TWO: "Draw Two",
+    COLOR_CHANGE: "Wild",
+    PLUS_FOUR: "Wild Draw Four",
+  };
+  const col = colorMap[card.color] || "";
+  const typ = typeMap[card.type] || card.type;
+  return card.color === "ANY" ? typ : `${col} ${typ}`;
+}
+
 function playCardTypeSound(type) {
   switch (type) {
     case "REVERSE":
@@ -184,7 +279,7 @@ function canHumanAct() {
 }
 
 // ---------------------------------------------------------------------------
-// Login
+// Login & AI Initialization
 // ---------------------------------------------------------------------------
 
 usernameInput.value = humanUsername;
@@ -198,26 +293,63 @@ const aiProgressBarContainer = document.getElementById(
 );
 const aiProgressBar = document.getElementById("ai-progress-bar");
 
-// Automatically initialize the in-browser engine when no remote daemon is
-// configured, when the page has no API at all, or when this browser has a
-// WebGPU adapter (Metal on Apple Silicon beats any CPU-only Space by a wide
-// margin, so we prefer it unless the URL explicitly names an API host).
-async function hasWebGpuAdapter() {
-  if (typeof navigator === "undefined" || !navigator.gpu) return false;
-  try {
-    const adapter = await navigator.gpu.requestAdapter({
-      powerPreference: "high-performance",
-    });
-    return Boolean(adapter);
-  } catch (_) {
-    return false;
+let useInBrowser = false;
+let inBrowserInitPromise = null;
+
+function startInBrowserInit() {
+  if (modelClient.isInBrowserLoaded) {
+    if (aiStatusText) {
+      const dev = (modelClient.inBrowserDevice || "wasm").toUpperCase();
+      aiStatusText.classList.remove("error");
+      aiStatusText.textContent = `AI Ready (${dev})`;
+    }
+    if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
+    if (aiRetryBtn) aiRetryBtn.classList.add("hidden");
+    return Promise.resolve();
   }
+
+  if (inBrowserInitPromise) return inBrowserInitPromise;
+
+  if (aiStatusText) {
+    aiStatusText.classList.remove("error");
+    aiStatusText.textContent = "Loading AI...";
+  }
+  if (aiRetryBtn) aiRetryBtn.classList.add("hidden");
+
+  inBrowserInitPromise = modelClient
+    .initInBrowser((pct, msg) => {
+      if (aiStatusText) {
+        aiStatusText.classList.remove("error");
+        aiStatusText.textContent = msg || `Loading AI (${pct}%)...`;
+      }
+      if (aiProgressBarContainer) aiProgressBarContainer.style.display = "block";
+      if (aiProgressBar) aiProgressBar.style.width = `${pct}%`;
+    })
+    .then(() => {
+      const dev = (modelClient.inBrowserDevice || "wasm").toUpperCase();
+      if (aiStatusText) {
+        aiStatusText.classList.remove("error");
+        aiStatusText.textContent = `AI Ready (${dev})`;
+      }
+      if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
+      if (aiRetryBtn) aiRetryBtn.classList.add("hidden");
+    })
+    .catch((err) => {
+      console.warn("[ataraxos-uno] In-browser init failed:", err);
+      inBrowserInitPromise = null;
+      if (aiStatusText) {
+        aiStatusText.classList.add("error");
+        aiStatusText.textContent = `AI failed to load: ${err.message || "Network error"}`;
+      }
+      if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
+      if (aiRetryBtn) aiRetryBtn.classList.remove("hidden");
+      throw err;
+    });
+
+  return inBrowserInitPromise;
 }
 
-let useInBrowser = false;
-
 const backendReady = (async () => {
-  // Check if server is running locally / configured
   const isServerAvailable = await modelClient.checkHealth();
 
   if (isServerAvailable) {
@@ -225,77 +357,48 @@ const backendReady = (async () => {
     modelClient.setPreferInBrowser(false);
     modelClient.setMode("auto");
     if (aiStatusText) {
-      aiStatusText.textContent = "AI Ready";
+      aiStatusText.classList.remove("error");
+      aiStatusText.textContent = "AI Ready (Server)";
     }
     if (aiProgressBarContainer) aiProgressBarContainer.style.display = "none";
   } else {
-    // Static browser deployment (e.g. GitHub Pages)
     useInBrowser = true;
     modelClient.setPreferInBrowser(true);
     modelClient.setMode("auto");
-
-    if (aiStatusText && aiProgressBarContainer && aiProgressBar) {
-      modelClient
-        .initInBrowser((pct, msg) => {
-          aiStatusText.textContent = `Loading AI (${pct}%)...`;
-          aiProgressBarContainer.style.display = "block";
-          aiProgressBar.style.width = `${pct}%`;
-        })
-        .then(() => {
-          aiStatusText.textContent = "AI Ready";
-          aiProgressBarContainer.style.display = "none";
-        })
-        .catch((err) => {
-          console.warn("[ataraxos-uno] In-browser init failed:", err);
-          aiStatusText.textContent = "AI Ready";
-          aiProgressBarContainer.style.display = "none";
-        });
-    }
+    startInBrowserInit().catch(() => {});
   }
 })();
+
+if (aiRetryBtn) {
+  aiRetryBtn.addEventListener("click", () => {
+    startInBrowserInit().catch(() => {});
+  });
+}
 
 async function handleLoginSubmit() {
   humanUsername = (usernameInput.value || "").trim().slice(0, 24) || "Player";
   writeStorage("uno_username", humanUsername);
 
-  await backendReady;
+  connectBtn.textContent = "Loading AI...";
+  connectBtn.disabled = true;
 
-  if (useInBrowser && !modelClient.isInBrowserLoaded) {
-    connectBtn.value = "Loading AI...";
-    connectBtn.disabled = true;
-    try {
-      await modelClient.initInBrowser((pct, msg) => {
-        if (aiStatusText) aiStatusText.textContent = msg;
-        if (aiProgressBarContainer)
-          aiProgressBarContainer.style.display = "block";
-        if (aiProgressBar) aiProgressBar.style.width = `${pct}%`;
-      });
-    } catch (initErr) {
-      console.error(
-        "[ataraxos-uno] In-browser init failed on play click:",
-        initErr,
-      );
-      alert(`Failed to load AI model: ${initErr.message}`);
-      connectBtn.value = "Play!";
-      connectBtn.disabled = false;
-      return;
+  try {
+    await backendReady;
+
+    if (useInBrowser && !modelClient.isInBrowserLoaded) {
+      await startInBrowserInit();
     }
-    connectBtn.value = "Play!";
+  } catch (initErr) {
+    console.error("[ataraxos-uno] In-browser init failed on play click:", initErr);
+    connectBtn.textContent = "Play!";
     connectBtn.disabled = false;
+    return;
   }
 
-  // Non-blocking preflight; a broken endpoint still surfaces as a fatal modal on
-  // the bot's first turn, but this gives the console an early hint. Skipped when
-  // local GPU inference is already the chosen backend.
-  if (!modelClient.preferInBrowser) {
-    modelClient.checkHealth().then((ok) => {
-      if (!ok && CONFIG.DEFAULT_API_URL) {
-        console.warn(
-          `[ataraxos-uno] Inference endpoint not reachable: ${CONFIG.DEFAULT_API_URL}`,
-        );
-      }
-    });
-  }
+  connectBtn.textContent = "Play!";
+  connectBtn.disabled = false;
+
+  trackEvent("play-clicked", "Entered Game Lobby");
 
   loginContainer.classList.add("hidden");
   gameContainer.classList.remove("hidden");
@@ -303,10 +406,14 @@ async function handleLoginSubmit() {
   setupLobby();
 }
 
-connectBtn.addEventListener("click", handleLoginSubmit);
-usernameInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") handleLoginSubmit();
-});
+if (loginForm) {
+  loginForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    handleLoginSubmit();
+  });
+} else {
+  connectBtn.addEventListener("click", handleLoginSubmit);
+}
 
 // ---------------------------------------------------------------------------
 // Lobby / player badges
@@ -326,18 +433,25 @@ function setupLobby() {
   botCardsContainer.innerHTML = "";
   deskCardEl = null;
   cardDesk.innerHTML = `
-        <img draggable="false" src="resources/cards/UNO_CARD.png" class="card-desk" id="START_CARD" title="Start game" style="cursor: pointer;">
-    `;
+    <img draggable="false" src="resources/cards/UNO_CARD.png" class="card-desk" id="START_CARD" alt="Start game deck" style="cursor: pointer;" />
+    <button type="button" id="start-game-btn" class="start-deal-btn">Deal Cards</button>
+  `;
 
   winnerContainer.classList.add("hidden");
   winnerWrapper.classList.remove("ScaleUp");
   if (arrowImg) arrowImg.style.visibility = "hidden";
   updateStackDisplay(0);
   setInteractionForTurn(null);
+
+  const startBtn = document.getElementById("start-game-btn");
+  if (startBtn) startBtn.focus();
 }
 
 cardDesk.addEventListener("click", (e) => {
-  if (e.target && e.target.id === "START_CARD" && !engine.isStarted) {
+  const trigger =
+    e.target &&
+    (e.target.id === "START_CARD" || e.target.id === "start-game-btn");
+  if (trigger && !engine.isStarted) {
     engine.startNewGame();
   }
 });
@@ -358,6 +472,7 @@ function renderPlayerBadge(pid, name, avatar, count) {
     aImg.className = "avatar";
     aImg.id = `avatar_${pid}`;
     aImg.src = avatar;
+    aImg.alt = "";
     aImg.width = 64;
     aImg.height = 64;
     aImg.draggable = false;
@@ -365,6 +480,7 @@ function renderPlayerBadge(pid, name, avatar, count) {
     const oImg = document.createElement("img");
     oImg.className = "overlay";
     oImg.id = `overlay_${pid}`;
+    oImg.alt = "";
     oImg.width = 64;
     oImg.height = 64;
     oImg.draggable = false;
@@ -475,7 +591,8 @@ function renderHumanCards(cards) {
       img.className = "card";
       img.dataset.cardId = cid;
       img.draggable = false;
-      img.alt = "";
+      img.alt = formatCardAriaLabel(card);
+      img.setAttribute("role", "button");
       img.src = cardImageSrc(card);
       img.addEventListener(
         "animationend",
@@ -487,6 +604,7 @@ function renderHumanCards(cards) {
     } else {
       const src = cardImageSrc(card);
       if (img.getAttribute("src") !== src) img.setAttribute("src", src);
+      img.alt = formatCardAriaLabel(card);
     }
 
     const canPlay =
@@ -497,6 +615,8 @@ function renderHumanCards(cards) {
       engine.canPlayCard(card, humanPlayerId);
     img.classList.toggle("playable", canPlay);
     img.classList.toggle("unplayable", !canPlay);
+    img.tabIndex = canPlay ? 0 : -1;
+    img.setAttribute("aria-disabled", canPlay ? "false" : "true");
 
     const ref = cardsContainer.children[index] || null;
     if (ref !== img) cardsContainer.insertBefore(img, ref);
@@ -544,6 +664,8 @@ function refreshPlayableCards() {
       engine.canPlayCard(card, humanPlayerId);
     el.classList.toggle("playable", canPlay);
     el.classList.toggle("unplayable", !canPlay);
+    el.tabIndex = canPlay ? 0 : -1;
+    el.setAttribute("aria-disabled", canPlay ? "false" : "true");
   }
 }
 
@@ -584,6 +706,7 @@ function setInteractionForTurn(playerId = engine.currentMove) {
     !pendingHumanCardId;
 
   cardDeckBtn.classList.toggle("disabled", !canAct);
+  cardDeckBtn.setAttribute("aria-disabled", canAct ? "false" : "true");
   cardsContainer.classList.toggle("disabled", !canAct);
   updateActivePlayerHighlight(playerId);
   refreshPlayableCards();
@@ -591,7 +714,9 @@ function setInteractionForTurn(playerId = engine.currentMove) {
 
 function updateStackDisplay(stack) {
   const value = Number(stack) || 0;
-  cardDeckBtn.title = value > 0 ? `Draw ${value} cards` : "Draw card";
+  const drawText = value > 0 ? `Draw ${value} cards` : "Draw card";
+  cardDeckBtn.title = drawText;
+  cardDeckBtn.setAttribute("aria-label", drawText);
 
   if (value > 0) {
     stackingCount.innerText = `+${value}`;
@@ -617,25 +742,22 @@ function renderDeskCard(
 
   const src = cardImageSrc(card, colorChange);
 
-  // Reuse the existing desk <img> instead of replacing it. Swapping src on an
-  // already-painted element lets the browser show the previous bitmap until the
-  // new (preloaded) one is ready, which keeps the flying-card handoff seamless.
   let img = deskCardEl;
   if (!img || !img.isConnected) {
     img = document.createElement("img");
     img.className = "card-desk";
     img.draggable = false;
-    img.alt = "";
+    img.alt = formatCardAriaLabel(card);
     deskCardEl = img;
     cardDesk.appendChild(img);
+  } else {
+    img.alt = formatCardAriaLabel(card);
   }
 
   if (img.getAttribute("src") !== src) {
     img.setAttribute("src", src);
   }
 
-  // Keep exactly one desk card in the DOM even if an untracked START_CARD or a
-  // previous node was left behind.
   for (const oldCard of Array.from(cardDesk.querySelectorAll(".card-desk"))) {
     if (oldCard !== img) oldCard.remove();
   }
@@ -877,10 +999,6 @@ let botPrefetchPromise = null;
 function prefetchBotMoveIfTurn() {
   if (!engine.isStarted || engine.currentMove !== botPlayerId) return;
   const features = engine.getAtaraxosFeatures(botPlayerId);
-  if (features.items.length === 0) {
-    botPrefetchPromise = Promise.resolve({ action: "draw", win_prob: 0.5 });
-    return;
-  }
   botPrefetchPromise = modelClient.predictAction(features);
 }
 
@@ -908,7 +1026,7 @@ async function playHumanCard(cid, card, img, chosenColor) {
     const result = engine.playCard(humanPlayerId, cid, chosenColor);
     if (!result.success) {
       console.warn(
-        `[uno-laya] Card play rejected: ${result.reason || "unknown reason"}`,
+        `[ataraxos-uno] Card play rejected: ${result.reason || "unknown reason"}`,
       );
     }
 
@@ -920,7 +1038,7 @@ async function playHumanCard(cid, card, img, chosenColor) {
     }
     await waitForDeskImage();
   } catch (err) {
-    console.error("[uno-laya] Failed to place card:", err);
+    console.error("[ataraxos-uno] Failed to place card:", err);
   } finally {
     removeGhost(flight);
     if (img) img.style.visibility = "";
@@ -929,8 +1047,7 @@ async function playHumanCard(cid, card, img, chosenColor) {
   }
 }
 
-function handleHumanCardClick(e) {
-  const img = e.target && e.target.closest ? e.target.closest(".card") : null;
+function activateHumanCard(img) {
   if (!img || !cardsContainer.contains(img)) return;
   if (!canHumanAct()) return;
 
@@ -950,7 +1067,30 @@ function handleHumanCardClick(e) {
   playHumanCard(cid, card, img, null);
 }
 
-cardsContainer.addEventListener("click", handleHumanCardClick);
+cardsContainer.addEventListener("click", (e) => {
+  const img = e.target && e.target.closest ? e.target.closest(".card") : null;
+  activateHumanCard(img);
+});
+
+cardsContainer.addEventListener("keydown", (e) => {
+  const img = e.target && e.target.closest ? e.target.closest(".card") : null;
+  if (!img) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    activateHumanCard(img);
+  } else if (e.key === " ") {
+    e.preventDefault();
+  }
+});
+
+cardsContainer.addEventListener("keyup", (e) => {
+  const img = e.target && e.target.closest ? e.target.closest(".card") : null;
+  if (!img) return;
+  if (e.key === " ") {
+    e.preventDefault();
+    activateHumanCard(img);
+  }
+});
 
 async function handleDeckClick() {
   if (!canHumanAct()) return;
@@ -961,11 +1101,10 @@ async function handleDeckClick() {
   try {
     const flightPromise = animateHumanDrawCard();
     engine.drawCard(humanPlayerId);
-    // Speculatively fire bot inference while human card is in flight
     prefetchBotMoveIfTurn();
     flight = await flightPromise;
   } catch (err) {
-    console.error("[uno-laya] Failed to draw card:", err);
+    console.error("[ataraxos-uno] Failed to draw card:", err);
   } finally {
     removeGhost(flight);
     isHumanActing = false;
@@ -979,6 +1118,9 @@ function showColorSelect() {
   colorSelect.classList.remove("PopOut");
   void colorSelect.offsetWidth;
   colorSelect.classList.add("PopIn");
+  playSound("resources/sounds/choose_color.mp3");
+  const firstColorBtn = colorSelect.querySelector(".color");
+  if (firstColorBtn) firstColorBtn.focus();
 }
 
 function hideColorSelect() {
@@ -989,19 +1131,21 @@ function hideColorSelect() {
 
 function cancelColorSelect() {
   if (!pendingHumanCardId) return;
+  const prevImg = pendingHumanCardImg;
   pendingHumanCardId = null;
   pendingHumanCardImg = null;
   hideColorSelect();
   isHumanActing = false;
   setInteractionForTurn();
+  if (prevImg && prevImg.isConnected) prevImg.focus();
 }
 
 colorSelect.addEventListener("click", (e) => {
-  const canvas =
+  const btn =
     e.target && e.target.closest ? e.target.closest(".color") : null;
-  if (!canvas || !pendingHumanCardId) return;
+  if (!btn || !pendingHumanCardId) return;
 
-  const chosenColor = canvas.id;
+  const chosenColor = btn.id;
   const cid = pendingHumanCardId;
   const img = pendingHumanCardImg;
   const card = engine.hands.human[cid];
@@ -1020,7 +1164,7 @@ colorSelect.addEventListener("click", (e) => {
   playHumanCard(cid, card, img, chosenColor);
 });
 
-// Clicking away or pressing Escape cancels a pending wild colour choice.
+// Clicking away or pressing Escape cancels a pending wild colour choice (or closes X-Ray).
 document.addEventListener(
   "pointerdown",
   (e) => {
@@ -1032,7 +1176,13 @@ document.addEventListener(
 );
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") cancelColorSelect();
+  if (e.key === "Escape") {
+    if (pendingHumanCardId) {
+      cancelColorSelect();
+    } else if (xrayPanel && !xrayPanel.classList.contains("hidden")) {
+      setXrayOpen(false);
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -1041,6 +1191,7 @@ document.addEventListener("keydown", (e) => {
 
 engine.on("game_started", (data) => {
   clearNextGameInterval();
+  clearWinnerShowTimeout();
   hideColorSelect();
   pendingHumanCardId = null;
   pendingHumanCardImg = null;
@@ -1063,6 +1214,7 @@ engine.on("game_started", (data) => {
   updatePlayerCount(botPlayerId, data.botCardCount);
   updateStackDisplay(data.stack);
   setInteractionForTurn(data.currentMove);
+  trackEvent("game-started", "Started UNO Match");
 });
 
 engine.on("card_placed", (data) => {
@@ -1079,8 +1231,6 @@ engine.on("card_placed", (data) => {
   }
   if (remainingCount !== 1) clearPlayerUnoOverlay(playerId);
 
-  // Wild cards stay silent here; the follow-up color_changed event plays the
-  // colour-change sound and swaps the desk art to the coloured GIF.
   renderDeskCard(card, { silent: !!isWild });
   updateStackDisplay(data.stack);
 });
@@ -1144,10 +1294,33 @@ async function triggerBotTurn() {
       }
       if (!engine.isStarted || engine.currentMove !== botPlayerId) break;
 
-      const { items, rawLegal } = engine.getLegalActionsForPlayer(botPlayerId);
+      const { items } = engine.getLegalActionsForPlayer(botPlayerId);
+
+      // Consume speculative neural prediction if already in flight, else run inference
+      let prediction;
+      if (botPrefetchPromise) {
+        prediction = await botPrefetchPromise;
+        botPrefetchPromise = null;
+      } else {
+        const features = engine.getAtaraxosFeatures(botPlayerId);
+        prediction = await modelClient.predictAction(features);
+      }
+
+      if (!engine.isStarted || engine.currentMove !== botPlayerId) break;
+
+      if (prediction.win_prob !== undefined) {
+        updateWinProbabilityDisplay(prediction.win_prob);
+      }
+      if (prediction.belief_xray) {
+        updateBeliefXrayDisplay(prediction.belief_xray);
+      }
+      recordAiDecision({
+        latencyMs: prediction.latencyMs,
+        backend: prediction.engine_backend,
+      });
 
       // If no legal cards, the bot must draw (or take the active penalty stack).
-      if (items.length === 0) {
+      if (items.length === 0 || prediction.action === "draw") {
         while (isHumanActing) {
           await new Promise((r) => setTimeout(r, 16));
         }
@@ -1157,36 +1330,7 @@ async function triggerBotTurn() {
         break;
       }
 
-      // 1. Consume speculative neural prediction if already in flight, else run inference
-      let prediction;
-      if (botPrefetchPromise) {
-        prediction = await botPrefetchPromise;
-        botPrefetchPromise = null;
-      } else {
-        const features = engine.getAtaraxosFeatures(botPlayerId);
-        prediction = await modelClient.predictAction(features);
-      }
       const chosenAction = prediction.action;
-
-      if (prediction.win_prob !== undefined) {
-        updateWinProbabilityDisplay(prediction.win_prob);
-      }
-      if (prediction.belief_xray) {
-        updateBeliefXrayDisplay(prediction.belief_xray);
-      }
-
-      // 2. Ensure any human flight animation has landed before animating bot card
-      while (isHumanActing) {
-        await new Promise((r) => setTimeout(r, 16));
-      }
-
-      if (chosenAction === "draw") {
-        const flight = await animateBotDrawCard();
-        engine.drawCard(botPlayerId);
-        removeGhost(flight);
-        break;
-      }
-
       const match = items.find((it) => it.actionStr === chosenAction);
       if (!match) {
         throw new FatalNeuralModelException(
@@ -1199,6 +1343,10 @@ async function triggerBotTurn() {
         throw new FatalNeuralModelException(
           `Neural model selected a card that is no longer in the bot hand.`,
         );
+      }
+
+      while (isHumanActing) {
+        await new Promise((r) => setTimeout(r, 16));
       }
 
       const chosenColor = match.pickColor || null;
@@ -1290,6 +1438,7 @@ function showFatalNeuralError(err) {
   });
 
   const button = document.createElement("button");
+  button.type = "button";
   button.textContent = "Restart Game";
   Object.assign(button.style, {
     padding: "12px 28px",
@@ -1317,44 +1466,68 @@ function clearNextGameInterval() {
   }
 }
 
+function clearWinnerShowTimeout() {
+  if (winnerShowTimeout) {
+    clearTimeout(winnerShowTimeout);
+    winnerShowTimeout = null;
+  }
+}
+
 function handleGameOver(data) {
   clearNextGameInterval();
+  clearWinnerShowTimeout();
   cancelColorSelect();
   setInteractionForTurn(null);
 
-  setTimeout(() => {
+  const summary = recordMatchResult({
+    winner: data.winner,
+    turnCount: engine.turnCount,
+  });
+  const outcomeTag =
+    data.winner === humanPlayerId
+      ? "human-win"
+      : data.winner === botPlayerId
+        ? "ai-win"
+        : "draw";
+  trackEvent(`game-over-${outcomeTag}`, `Game Over: ${outcomeTag}`);
+
+  winnerShowTimeout = setTimeout(() => {
+    winnerShowTimeout = null;
     winnerContainer.classList.remove("hidden");
     winnerWrapper.classList.add("ScaleUp");
 
     if (data.winner === humanPlayerId) {
-      winnerUsername.innerText = `${humanUsername} WINS!`;
+      winnerUsername.textContent = `${humanUsername} WINS!`;
       winnerAvatar.src = humanAvatarUrl;
     } else if (data.winner === botPlayerId) {
-      winnerUsername.innerText = "ATARAXOS AI WINS!";
+      winnerUsername.textContent = "ATARAXOS AI WINS!";
       winnerAvatar.src = "resources/defaultAvatar.png";
     } else {
-      winnerUsername.innerText = "DRAW";
+      winnerUsername.textContent = "DRAW";
       winnerAvatar.src = "resources/defaultAvatar.png";
     }
+
+    if (winnerSummary) {
+      winnerSummary.textContent = `Finished in ${engine.turnCount} turns • Record: ${summary.humanWins}W – ${summary.botWins}L (${summary.winRate}%)`;
+    }
+    if (winnerReturnBtn) winnerReturnBtn.focus();
   }, motionDuration(500));
 
   let sec = CONFIG.NEXT_GAME_TIMEOUT;
-  winnerTimeout.innerText = `Next round in ${sec}s`;
+  winnerTimeout.textContent = `Next round in ${sec}s`;
   nextGameInterval = setInterval(() => {
     sec -= 1;
     if (sec > 0) {
-      winnerTimeout.innerText = `Next round in ${sec}s`;
+      winnerTimeout.textContent = `Next round in ${sec}s`;
     } else {
-      clearNextGameInterval();
-      winnerContainer.classList.add("hidden");
-      winnerWrapper.classList.remove("ScaleUp");
-      engine.startNewGame();
+      startPlayAgain();
     }
   }, 1000);
 }
 
 function startPlayAgain() {
   clearNextGameInterval();
+  clearWinnerShowTimeout();
   winnerContainer.classList.add("hidden");
   winnerWrapper.classList.remove("ScaleUp");
   modelClient.resetGame();

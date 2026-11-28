@@ -450,7 +450,8 @@ export class UnoGameEngine {
     if (this.playedCards.length > 0) {
       const lastIdx = this.playedCards.length - 1;
       const rlColor = CONFIG.COLOR_WEB_TO_RL[color];
-      this.playedCards[lastIdx] = `${rlColor}-${this.currentCard.type.toLowerCase()}`;
+      const rlTrait = CONFIG.TYPE_WEB_TO_RL[this.currentCard.type] || "wild";
+      this.playedCards[lastIdx] = `${rlColor}-${rlTrait}`;
     }
   }
 
